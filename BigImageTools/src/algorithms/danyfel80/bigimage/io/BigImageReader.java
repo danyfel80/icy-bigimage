@@ -121,15 +121,35 @@ public class BigImageReader implements Runnable {
 		} else {
 			throw new IllegalArgumentException("File " + path + " doesn't exist.");
 		}
-
+		
+		Dimension dims = BigImageUtil.getImageDimension(this.path);
+		
 		// Check tile size
 		if (tile == null) {
-			Dimension dims = BigImageUtil.getImageDimension(this.path);
 			this.tile = new Rectangle(new Point(0, 0), dims);
-		} else if (!tile.isEmpty()) {
-			this.tile = tile;
-		} else {
+		} else if (tile.isEmpty()) {
+			System.err.println(dims);
 			throw new IllegalArgumentException("Tile to extract cannot be empty.");
+		} else {
+			System.err.println(dims);
+			if (tile.x >= dims.width || tile.y >= dims.height) {
+				throw new IllegalArgumentException("Tile to extract cannot be placed out of image bounds: " + tile.getLocation());
+			}
+			if (tile.x < 0){
+				tile.width += tile.x;
+				tile.x = 0;
+			}
+			if (tile.y < 0){
+				tile.height += tile.y;
+				tile.y = 0;
+			}
+			if (tile.x + tile.width > dims.width){
+				tile.width -= tile.x + tile.width - dims.width;
+			}
+			if (tile.y + tile.height > dims.height){
+				tile.height -= tile.y + tile.height - dims.height;
+			}
+			this.tile = tile;
 		}
 
 		// Check output size
@@ -163,7 +183,7 @@ public class BigImageReader implements Runnable {
 		this.numProcessedTiles = 0;
 		this.isInterrupted = false;
 		this.isShutdownNow = false;
-
+		
 		this.inSize = new Dimension(tile.getSize());
 		this.channelSize = 0;
 		try {
