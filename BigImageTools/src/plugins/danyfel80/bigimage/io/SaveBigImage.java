@@ -5,6 +5,9 @@ import java.awt.Point;
 import java.awt.Rectangle;
 import java.io.File;
 import java.io.IOException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 
 import algorithms.danyfel80.bigimage.io.BigImageWriter;
 import icy.image.IcyBufferedImage;
@@ -23,9 +26,12 @@ import plugins.adufour.ezplug.EzVarSequence;
  */
 public class SaveBigImage extends EzPlug implements EzStoppable {
 	
-	EzVarSequence inSeq = new EzVarSequence("Sequence");
-	EzVarFile inFile = new EzVarFile("File", "");
-	EzVarInteger inTileSize = new EzVarInteger("Tile size");
+	private EzVarSequence inSeq = new EzVarSequence("Sequence");
+	private EzVarFile inFile = new EzVarFile("File", "");
+	private EzVarInteger inTileSize = new EzVarInteger("Tile size");
+	
+	private IcyBufferedImage image;
+	private BigImageWriter saver;
 
 	/* (non-Javadoc)
 	 * @see plugins.adufour.ezplug.EzPlug#initialize()
@@ -42,7 +48,7 @@ public class SaveBigImage extends EzPlug implements EzStoppable {
 	 */
 	@Override
 	protected void execute() {
-		IcyBufferedImage ibi = inSeq.getValue().getFirstImage();
+		this.image = inSeq.getValue().getFirstImage();
 		
 		File file = inFile.getValue();
 		int tileSize = inTileSize.getValue();
@@ -57,8 +63,8 @@ public class SaveBigImage extends EzPlug implements EzStoppable {
 		int n, m;
 		int diffWidth, diffHeight;
 
-		sizeX = ibi.getWidth();
-		sizeY = ibi.getHeight();
+		sizeX = image.getWidth();
+		sizeY = image.getHeight();
 		if (tileSizeX <= 0)
 			tileSizeX = sizeX;
 		if (tileSizeY <= 0)
@@ -80,16 +86,17 @@ public class SaveBigImage extends EzPlug implements EzStoppable {
 		if (diffHeight > 0)
 			m++;
 
-		BigImageWriter saver = null;
+		saver = null;
 		try {
-			saver = new BigImageWriter(file, new Dimension(ibi.getWidth(), ibi.getHeight()), ibi.getSizeC(),
-					ibi.getDataType_(), new Dimension(tileSizeX, tileSizeY));
+			saver = new BigImageWriter(file, new Dimension(image.getWidth(), image.getHeight()), image.getSizeC(),
+					image.getDataType_(), new Dimension(tileSizeX, tileSizeY));
 		} catch (ServiceException | FormatException | IOException e1) {
 			e1.printStackTrace();
 			return;
 		}
 		
-		try {
+		
+			ExecutorService threadPool = Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors()-1);
 			for (int i = 0; i < m; i++) {
 				if (diffHeight > 0 && i == (m - 1)) {
 					y = sizeY - diffHeight;
@@ -109,23 +116,23 @@ public class SaveBigImage extends EzPlug implements EzStoppable {
 					
 					Rectangle rect = new Rectangle(x, y, w, h);
 					Point point = new Point(x, y);
-//					System.out.println("Saving tile " + rect + " at " + point);
-					saver.saveTile(IcyBufferedImageUtil.getSubImage(ibi, rect), point);
-
+					threadPool.submit(new SavingTask(rect, point));
 				}
 			}
 
-		} catch (FormatException | IOException e) {
-			e.printStackTrace();
-		} finally {
+			threadPool.shutdown();
 			try {
-				saver.closeWriter();
-			} catch (IOException e) {
-				e.printStackTrace();
+				threadPool.awaitTermination(Long.MAX_VALUE, TimeUnit.DAYS);
+			} catch (InterruptedException e1) {
+				e1.printStackTrace();
+				return;
+			} finally {
+				try {
+					saver.closeWriter();
+				} catch (IOException e) {
+					e.printStackTrace();
+				}
 			}
-		}
-
-		this.getUI().setProgressBarMessage("Done");
 	}
 
 	/* (non-Javadoc)
@@ -137,6 +144,26 @@ public class SaveBigImage extends EzPlug implements EzStoppable {
 
 	}
 
-	
+	class SavingTask implements Runnable {
+
+		private final Rectangle rect;
+		private final Point point;
+		
+		public SavingTask(Rectangle rect, Point point) {
+			this.rect = rect;
+			this.point = point;
+		}
+
+		@Override
+		public void run() {
+			try {
+				System.out.println("Saving tile " + rect + " at " + point);
+				saver.saveTile(IcyBufferedImageUtil.getSubImage(image, rect), point);
+			} catch (FormatException | IOException e) {
+				e.printStackTrace();
+			}
+		}
+		
+	}
 
 }

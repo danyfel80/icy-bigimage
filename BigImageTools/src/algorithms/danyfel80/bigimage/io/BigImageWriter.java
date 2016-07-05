@@ -39,7 +39,6 @@ public class BigImageWriter {
 
 	private TiffWriter writer;
 	
-	private boolean firstWrite;
 
 	public BigImageWriter(File path, Dimension imgSize, int imgChannelSize, DataType imgDataType, Dimension tileSize)
 	    throws ServiceException, FormatException, IOException {
@@ -104,7 +103,6 @@ public class BigImageWriter {
 		ifd.put(IFD.TILE_WIDTH, tileSize.width);
 		ifd.put(IFD.TILE_LENGTH, tileSize.height);
 		ifd.put(IFD.ROWS_PER_STRIP, rowPerStrip);
-		firstWrite = true;
 	}
 	
 	/**
@@ -131,24 +129,7 @@ public class BigImageWriter {
 	 * @throws IOException if the tile cannot be writen to file.
 	 * @throws FormatException
 	 */
-	public void saveTile(IcyBufferedImage imageTile, Point tgtPoint)
-	    throws IOException, FormatException {
-
-		// To make sure IDF is created only once
-		synchronized (this) {
-			if (firstWrite) {
-				writeData(imageTile, tgtPoint);
-				firstWrite = false;
-				return;
-			}
-		}
-		
-		if (!firstWrite) {
-			writeData(imageTile, tgtPoint);
-		}
-	}
-	
-	private void writeData(IcyBufferedImage imageTile, Point tgtPoint)
+	public synchronized void saveTile(IcyBufferedImage imageTile, Point tgtPoint)
 	    throws IOException, FormatException {
 		byte[] data = null;
 
