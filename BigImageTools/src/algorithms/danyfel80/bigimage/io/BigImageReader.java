@@ -190,6 +190,8 @@ public class BigImageReader implements Runnable {
 		}
 
 		System.out.println("Loading " + FilenameUtils.getName(path.getAbsolutePath()) + " scaled at " + scale);
+		System.out.println("Original size: (" + this.tile.width + "x" + this.tile.height + "), Final size: ("
+		    + this.outSize.width + "x" + this.outSize.height + ")");
 
 		// Compute tile size and count
 		long usedMem = Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory();
@@ -199,20 +201,25 @@ public class BigImageReader implements Runnable {
 		Dimension loadTileSize = new Dimension(inSize);
 		Dimension outTileSize = new Dimension(outSize);
 		Dimension loadTileCount = new Dimension(1, 1);
-		
-		long loadTileDataSize = (long)channelSize * (long)dataType.getSize() * (long)loadTileSize.width * (long)loadTileSize.height;
-		loadTileDataSize += (long)channelSize * (long)dataType.getSize() * (long)outTileSize.width * (long)outTileSize.height;
-		long loadOutDataSize = (long)channelSize * (long)dataType.getSize() * (long)outSize.width * (long)outSize.height;
-//		System.out.println("Output size: " + loadOutDataSize);
-//		System.out.println("Data size: " + loadTileDataSize);
-//		System.out.println("Free ram: " + ramAvailable);
-//		System.out.println("Free ram after output: " + (ramAvailable - loadOutDataSize));
+
+		long loadTileDataSize = (long) channelSize * (long) dataType.getSize() * (long) loadTileSize.width
+		    * (long) loadTileSize.height;
+		loadTileDataSize += (long) channelSize * (long) dataType.getSize() * (long) outTileSize.width
+		    * (long) outTileSize.height;
+		long loadOutDataSize = (long) channelSize * (long) dataType.getSize() * (long) outSize.width
+		    * (long) outSize.height;
+		// System.out.println("Output size: " + loadOutDataSize);
+		// System.out.println("Data size: " + loadTileDataSize);
+		// System.out.println("Free ram: " + ramAvailable);
+		// System.out.println("Free ram after output: " + (ramAvailable -
+		// loadOutDataSize));
 		if (ramAvailable - loadOutDataSize < 0) {
 			throw new OutOfMemoryError("Not enough memory to load image. Size(" + outSize.width + "x" + outSize.height + ")");
 		}
-//		System.out.println((ramAvailable - loadOutDataSize) / (2*processors) < loadTileDataSize);
-		while ((ramAvailable-loadOutDataSize) / (2*processors) < loadTileDataSize && (loadTileSize.width > 7 || loadTileSize.height > 7)
-		    && (outTileSize.width > 1 && outTileSize.height > 1)) {
+		// System.out.println((ramAvailable - loadOutDataSize) / (2*processors) <
+		// loadTileDataSize);
+		while ((ramAvailable - loadOutDataSize) / (2 * processors) < loadTileDataSize
+		    && (loadTileSize.width > 7 || loadTileSize.height > 7) && (outTileSize.width > 1 && outTileSize.height > 1)) {
 			if (loadTileSize.width > 7) {
 				loadTileSize.width /= 2;
 				outTileSize.width /= 2;
@@ -224,9 +231,12 @@ public class BigImageReader implements Runnable {
 				loadTileCount.height *= 2;
 			}
 
-			loadTileDataSize = (long)channelSize * (long)dataType.getSize() * (long)loadTileSize.width * (long)loadTileSize.height;
-			loadTileDataSize += (long)channelSize * (long)dataType.getSize() * (long)outTileSize.width * (long)outTileSize.height;
-			System.out.println((long)(ramAvailable - loadOutDataSize) / (long)(2*processors) < (long)loadTileDataSize);
+			loadTileDataSize = (long) channelSize * (long) dataType.getSize() * (long) loadTileSize.width
+			    * (long) loadTileSize.height;
+			loadTileDataSize += (long) channelSize * (long) dataType.getSize() * (long) outTileSize.width
+			    * (long) outTileSize.height;
+			// System.out.println((long)(ramAvailable - loadOutDataSize) /
+			// (long)(2*processors) < (long)loadTileDataSize);
 		}
 		this.totalProcessedTiles = loadTileCount.width * loadTileCount.height;
 		System.out.println("" + totalProcessedTiles + " tiles of " + loadTileSize.width + " by " + loadTileSize.height);
@@ -238,9 +248,9 @@ public class BigImageReader implements Runnable {
 		// Load tiles using a thread pool
 		IcyBufferedImage loadedImage = new IcyBufferedImage(outSize.width, outSize.height, channelSize, dataType);
 		loadedImage.beginUpdate();
-		
-		this.threadPool = Executors.newFixedThreadPool(processors);
-		
+
+		this.threadPool = Executors.newFixedThreadPool(processors - 1);
+
 		// For each tile in y
 		for (int j = 0; j < loadTileCount.height; j++) {
 			// set tile height
@@ -257,7 +267,7 @@ public class BigImageReader implements Runnable {
 				    : outTileSize.width;
 				// set tile rectangle
 				Dimension currentTileDimension = new Dimension(currentTileWidth, currentTileHeight);
-				Point currentTilePosition = new Point(i * loadTileSize.width, j * loadTileSize.height);
+				Point currentTilePosition = new Point(tile.x + i * loadTileSize.width, tile.y + j * loadTileSize.height);
 				Rectangle currentTileRectangle = new Rectangle(currentTilePosition, currentTileDimension);
 
 				Dimension currentOutTileDimension = new Dimension(currentOutTileWidth, currentOutTileHeight);
@@ -275,7 +285,8 @@ public class BigImageReader implements Runnable {
 			e.printStackTrace();
 			return;
 		} finally {
-			//Array2DUtil.doubleArrayToArray(loadedSequenceData, loadedSequence.getDataXYC(0, 0));
+			// Array2DUtil.doubleArrayToArray(loadedSequenceData,
+			// loadedSequence.getDataXYC(0, 0));
 			loadedImage.dataChanged();
 			loadedImage.endUpdate();
 			loadedSequence = new Sequence(loadedImage);
@@ -288,7 +299,10 @@ public class BigImageReader implements Runnable {
 	public Sequence getSequence() {
 		return loadedSequence;
 	}
-	
+
+	/**
+	 * Handles the execution interruption
+	 */
 	public void interrupt() {
 		this.isInterrupted = true;
 	}
@@ -312,7 +326,7 @@ public class BigImageReader implements Runnable {
 		 * @param loadedImage
 		 */
 		public TileReadingTask(final File path, final Rectangle tileRectangle, final Rectangle outTileRectangle,
-				final IcyBufferedImage loadedImage) {
+		    final IcyBufferedImage loadedImage) {
 			this.path = path;
 			this.tileRectangle = tileRectangle;
 			this.outTileRectangle = outTileRectangle;
@@ -326,10 +340,13 @@ public class BigImageReader implements Runnable {
 		 */
 		@Override
 		public void run() {
-			
-			long freeMemory = Runtime.getRuntime().maxMemory() - (Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory());
-			long neededMemory = (long)channelSize * (long)dataType.getSize() * (long)tileRectangle.width * (long)tileRectangle.height;
-			neededMemory += (long)channelSize * (long)dataType.getSize() * (long)outTileRectangle.width * (long)outTileRectangle.height;
+
+			long freeMemory = Runtime.getRuntime().maxMemory()
+			    - (Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory());
+			long neededMemory = (long) channelSize * (long) dataType.getSize() * (long) tileRectangle.width
+			    * (long) tileRectangle.height;
+			neededMemory += (long) channelSize * (long) dataType.getSize() * (long) outTileRectangle.width
+			    * (long) outTileRectangle.height;
 			while (freeMemory < neededMemory) {
 				try {
 					System.out.println("Waiting to free memory");
@@ -338,9 +355,10 @@ public class BigImageReader implements Runnable {
 					e.printStackTrace();
 					return;
 				}
-				freeMemory = Runtime.getRuntime().maxMemory() - (Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory());
+				freeMemory = Runtime.getRuntime().maxMemory()
+				    - (Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory());
 			}
-//			System.out.println("Loading " + this.tileRectangle);
+			// System.out.println("Loading " + this.tileRectangle);
 			// Open reader
 			LociImporterPlugin importer = new LociImporterPlugin();
 			try {
@@ -354,14 +372,14 @@ public class BigImageReader implements Runnable {
 
 				// Copy data to full result
 				loadedImage.copyData(resultImage, null, outTileRectangle.getLocation());
-				
+
 				resultImage = null;
 
 			} catch (ClosedByInterruptException e) {
 				return;
 			} catch (UnsupportedFormatException | IOException e) {
 				e.printStackTrace();
-			}  finally {
+			} finally {
 				try {
 					importer.close();
 				} catch (IOException e) {
@@ -376,16 +394,16 @@ public class BigImageReader implements Runnable {
 						if (listener != null) {
 							BigImageReader.this.listener.notifyProgress(numProcessedTiles, totalProcessedTiles);
 						}
-						
+
 						if (isInterrupted && !isShutdownNow) {
 							BigImageReader.this.threadPool.shutdownNow();
 							BigImageReader.this.isShutdownNow = true;
 						}
 					}
 				}
-				
+
 			}
 		}
-		
+
 	}
 }

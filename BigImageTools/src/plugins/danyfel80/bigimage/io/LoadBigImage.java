@@ -20,6 +20,7 @@ import plugins.adufour.ezplug.EzVarBoolean;
 import plugins.adufour.ezplug.EzVarFile;
 import plugins.adufour.ezplug.EzVarInteger;
 import plugins.adufour.ezplug.EzVarListener;
+import plugins.adufour.ezplug.EzVarSequence;
 
 /**
  * This plugin uses the BigImageReader class to load big images and show the
@@ -31,11 +32,11 @@ public class LoadBigImage extends EzPlug implements Block, EzStoppable {
 
 	private EzVarFile inFile = new EzVarFile("Image path", "");
 	// Downsampling
-	private EzVarInteger inMaxWidth = new EzVarInteger("Max width");
-	private EzVarInteger inMaxHeight = new EzVarInteger("Max height");
+	private EzVarInteger inMaxWidth = new EzVarInteger("Maximum width");
+	private EzVarInteger inMaxHeight = new EzVarInteger("Maximum height");
 
 	// Tiling
-	private EzVarBoolean inIsTiled = new EzVarBoolean("Load Tile", false);
+	private EzVarBoolean inIsTiled = new EzVarBoolean("Load tile", false);
 	private EzVarInteger inTileX = new EzVarInteger("Tile x");
 	private EzVarInteger inTileY = new EzVarInteger("Tile y");
 	private EzVarInteger inTileW = new EzVarInteger("Tile width");
@@ -43,6 +44,9 @@ public class LoadBigImage extends EzPlug implements Block, EzStoppable {
 
 	BigImageReader loader;
 	Thread loaderThread;
+	
+	// Result
+	private EzVarSequence outSequence = new EzVarSequence("Sequence");
 
 	/*
 	 * (non-Javadoc)
@@ -72,7 +76,7 @@ public class LoadBigImage extends EzPlug implements Block, EzStoppable {
 	 */
 	@Override
 	public void declareOutput(VarList outputMap) {
-		// TODO Auto-generated method stub
+		outputMap.add(outSequence.name, outSequence.getVariable());
 	}
 
 	/*
@@ -91,6 +95,7 @@ public class LoadBigImage extends EzPlug implements Block, EzStoppable {
 	 */
 	@Override
 	protected void execute() {
+		// Read input
 		File path = inFile.getValue();
 		int maxWidth = inMaxWidth.getValue();
 		int maxHeight = inMaxHeight.getValue();
@@ -100,14 +105,17 @@ public class LoadBigImage extends EzPlug implements Block, EzStoppable {
 		int tileW = inTileW.getValue();
 		int tileH = inTileH.getValue();
 
+		// Process
 		long startTime = System.nanoTime();
 		try {
 			this.loader = new BigImageReader(path, isTiled ? new Rectangle(tileX, tileY, tileW, tileH) : null, maxWidth,
 			    maxHeight, new ProgressListener() {
 						@Override
 						public boolean notifyProgress(double position, double length) {
-							LoadBigImage.this.getUI().setProgressBarValue(position/length);
-							LoadBigImage.this.getUI().setProgressBarMessage("Loading image... (tile " + (int)position + "/" + (int)length + ")");
+							if (LoadBigImage.this.getUI() != null) {
+								LoadBigImage.this.getUI().setProgressBarValue(position/length);
+								LoadBigImage.this.getUI().setProgressBarMessage("Loading image... (tile " + (int)position + "/" + (int)length + ")");
+							}
 							return true;
 						}
 					});
@@ -123,8 +131,15 @@ public class LoadBigImage extends EzPlug implements Block, EzStoppable {
 		}
 		
 		long endTime = System.nanoTime();
-		addSequence(loader.getSequence());
 		System.out.println("Loaded in " + ((endTime - startTime) / 1000000) + "msecs.");
+		
+		// Set output
+		if (this.getUI() != null) {
+			this.getUI().setProgressBarValue(0);
+			addSequence(loader.getSequence());
+		} else {
+			outSequence.setValue(loader.getSequence());
+		}
 
 	}
 
