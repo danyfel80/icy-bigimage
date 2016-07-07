@@ -131,8 +131,9 @@ public class BigImageReader implements Runnable {
 			System.err.println(dims);
 			throw new IllegalArgumentException("Tile to extract cannot be empty.");
 		} else {
-			System.err.println(dims);
+			
 			if (tile.x >= dims.width || tile.y >= dims.height) {
+				System.err.println(dims +"\n"+ tile);
 				throw new IllegalArgumentException("Tile to extract cannot be placed out of image bounds: " + tile.getLocation());
 			}
 			if (tile.x < 0){

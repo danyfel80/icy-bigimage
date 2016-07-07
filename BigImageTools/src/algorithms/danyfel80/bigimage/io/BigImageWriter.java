@@ -51,7 +51,7 @@ public class BigImageWriter {
 		if (imgSize == null || imgSize.width * imgSize.height == 0) {
 			throw new IllegalArgumentException("Invalid image size: " + imgSize);
 		}
-		this.imgSize = imgSize;
+		this.imgSize = new Dimension(imgSize);
 
 		if (imgChannelSize < 1) {
 			throw new IllegalArgumentException("Invalid channel size: " + imgChannelSize);
@@ -66,7 +66,7 @@ public class BigImageWriter {
 		if (tileSize == null || tileSize.width * tileSize.height == 0) {
 			throw new IllegalArgumentException("Invalid tile size: " + tileSize);
 		}
-		this.tileSize = tileSize;
+		this.tileSize = new Dimension(tileSize);
 
 		// Init writer
 		initializeWriter();
@@ -120,6 +120,7 @@ public class BigImageWriter {
 	 */
 	public void closeWriter() throws IOException {
 		this.writer.close();
+		this.writer = null;
 	}
 	
 	/**
@@ -149,4 +150,17 @@ public class BigImageWriter {
 			}
 		}
 	}
+
+	/* (non-Javadoc)
+	 * @see java.lang.Object#toString()
+	 */
+	@Override
+	public String toString() {
+		return new String ("Writer: " + this.path);
+	}
+
+	public boolean isOpen() {
+		return writer != null;
+	}
+	
 }
