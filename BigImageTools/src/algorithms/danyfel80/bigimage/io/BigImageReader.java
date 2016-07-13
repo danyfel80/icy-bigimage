@@ -311,6 +311,7 @@ public class BigImageReader implements Runnable {
 			loadedImage.dataChanged();
 			loadedImage.endUpdate();
 			loadedSequence = new Sequence(loadedImage);
+			loadedSequence.setName(FilenameUtils.getBaseName(path.getAbsolutePath()));
 		}
 	}
 
