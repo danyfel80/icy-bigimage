@@ -14,13 +14,14 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
+import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.lang.ArrayUtils;
 
 import algorithms.danyfel80.bigimage.io.BigImageReader;
 import algorithms.danyfel80.bigimage.io.BigImageUtil;
 import algorithms.danyfel80.bigimage.io.BigImageWriter;
 import icy.common.exception.UnsupportedFormatException;
-import icy.common.listener.ProgressListener;
+import icy.common.listener.RichProgressListener;
 import icy.image.lut.LUT;
 import icy.sequence.Sequence;
 import icy.sequence.SequenceDataIterator;
@@ -45,17 +46,17 @@ public class BigImageThresholder implements Runnable {
 	 */
 	private final File inputPath;
 	/**
-	 * Amount of classes to threshold.
+	 * Classes used for segmentation.
 	 */
-	private final Integer numClasses;
+	private final int[] usedClasses;
 	/**
 	 * Output file path.
 	 */
-	private final File outputPath;
+	private File outputPath;
 	/**
 	 * Progress listener.
 	 */
-	private final ProgressListener listener;
+	private final RichProgressListener listener;
 
 	/**
 	 * Flag for processing interruption
@@ -109,21 +110,19 @@ public class BigImageThresholder implements Runnable {
 	 * @throws IllegalArgumentException
 	 *           If any of the parameters is not correct.
 	 */
-	public BigImageThresholder(File inputPath, Integer numClasses, File outputPath, ProgressListener listener)
+	public BigImageThresholder(File inputPath, int[] usedClasses, File outputPath, RichProgressListener listener)
 	    throws IllegalArgumentException {
 		if (inputPath == null || !inputPath.exists()) {
 			throw new IllegalArgumentException("Invalid input file path: " + inputPath);
 		}
 		this.inputPath = inputPath;
 
-		if (numClasses < 2) {
-			throw new IllegalArgumentException("The amount of classes must be at least 2: " + numClasses);
+		if (usedClasses.length < 2) {
+			throw new IllegalArgumentException("The amount of classes must be at least 2: " + usedClasses.length);
 		}
-		this.numClasses = numClasses;
+		
+		this.usedClasses = usedClasses;
 
-		if (outputPath == null) {
-			throw new IllegalArgumentException("Invalid output file path: " + outputPath);
-		}
 		this.outputPath = outputPath;
 
 		this.listener = listener;
@@ -139,12 +138,13 @@ public class BigImageThresholder implements Runnable {
 		this.isInterrupted = false;
 
 		try {
-			biReader = new BigImageReader(inputPath, null, 2000, 2000, new ProgressListener() {
+			biReader = new BigImageReader(inputPath, null, 2000, 2000, new RichProgressListener() {
 
 				@Override
-				public boolean notifyProgress(double position, double length) {
+				public boolean notifyProgress(double position, double length, String message, Object data) {
 					if (listener != null) {
-						listener.notifyProgress((position / length) * 0.33, 1.0);
+						listener.notifyProgress((position / length) * 0.33, 1.0, message + " (tile " + position + "/" + length + ")",
+			          null);
 					}
 					return true;
 				}
@@ -168,7 +168,7 @@ public class BigImageThresholder implements Runnable {
 		}
 
 		if (listener != null) {
-			listener.notifyProgress(0.33, 1.0);
+			listener.notifyProgress(0.33, 1.0, "Computing Threshold", null);
 		}
 
 		Sequence seq = biReader.getSequence();
@@ -178,11 +178,15 @@ public class BigImageThresholder implements Runnable {
 		Sequence graySeq = SequenceUtil.convertColor(seq, BufferedImage.TYPE_BYTE_GRAY, seq.createCompatibleLUT());
 
 		// Find threshold
-		int thresh = (int) getThresholdValue(graySeq);
+		List<Double> thresh = getThresholdValues(graySeq);
 		if (listener != null) {
-			listener.notifyProgress(0.67, 1.0);
+			listener.notifyProgress(0.67, 1.0, "Saving result", null);
 		}
-		System.out.println("Threshold value = " + thresh);
+		System.out.print("Threshold values = " + thresh + "\nUsing classes =");
+		for (int i = 0; i < usedClasses.length; i++) {
+			System.out.print(" " + usedClasses[i]);
+		}
+		System.out.println("");
 
 		if (this.isInterrupted) {
 			return;
@@ -203,19 +207,30 @@ public class BigImageThresholder implements Runnable {
 		Rectangle tileInfo = computeTileSize(imgSize, imgSizeC, imgDataType);
 
 		this.totalProcessedTiles = tileInfo.x * tileInfo.y;
-		System.out.println("" + totalProcessedTiles + " tiles of " + tileInfo.width + " by " + tileInfo.height);
-		// Announce loading start
-		if (this.listener != null) {
-			this.listener.notifyProgress(0.67 + 0.33 * (numProcessedTiles / totalProcessedTiles), 1.0);
-		}
+		System.out.println(
+		    "" + totalProcessedTiles + " tiles of " + tileInfo.width + " by " + tileInfo.height + " for " + imgSize);
 
 		try {
+			String inPathString = inputPath.getAbsolutePath();
+			String outPathString;
+			try {
+				outPathString = outputPath.getAbsolutePath();
+			} catch (NullPointerException e) {
+				outPathString = FilenameUtils.getFullPath(inPathString) + FilenameUtils.getBaseName(inPathString)
+				    + "_Threshold(" + thresh + ").tiff";
+				outputPath = new File(outPathString);
+			}
 			this.writer = new BigImageWriter(outputPath, imgSize, 1, DataType.UBYTE, tileInfo.getSize());
 		} catch (ServiceException | FormatException | IOException e1) {
 			e1.printStackTrace();
 			return;
 		}
 
+		// Announce loading start
+		if (this.listener != null) {
+			this.listener.notifyProgress(0.67 + 0.33 * (numProcessedTiles / totalProcessedTiles), 1.0,
+			    "Saving result(" + numProcessedTiles + "/" + totalProcessedTiles + ")", null);
+		}
 		this.threadPool = Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors() - 1);
 
 		// For each tile in y
@@ -232,7 +247,7 @@ public class BigImageThresholder implements Runnable {
 				Point currentTilePosition = new Point(i * tileInfo.width, j * tileInfo.height);
 				Rectangle currentTileRectangle = new Rectangle(currentTilePosition, currentTileDimension);
 
-				threadPool.submit(new TileThresholdingTask(currentTileRectangle, thresh));
+				threadPool.submit(new TileThresholdingTask(currentTileRectangle, thresh, usedClasses));
 			}
 		}
 
@@ -260,10 +275,11 @@ public class BigImageThresholder implements Runnable {
 	 *          Sequence to classify
 	 * @return Maximum class division.
 	 */
-	private double getThresholdValue(Sequence graySeq) {
-		double[][] thrs = KMeans.computeKMeansThresholds(graySeq, numClasses);
+	private List<Double> getThresholdValues(Sequence graySeq) {
+		double[][] thrs = KMeans.computeKMeansThresholds(graySeq, usedClasses.length);
 		List<Double> l = Arrays.asList(ArrayUtils.toObject(thrs[0]));
-		return Collections.max(l);
+		Collections.sort(l);
+		return l;
 	}
 
 	/**
@@ -330,7 +346,8 @@ public class BigImageThresholder implements Runnable {
 	class TileThresholdingTask implements Runnable {
 
 		private final Rectangle tileRectangle;
-		private final int thresh;
+		private final List<Double> thresh;
+		private final int[] usedClasses;
 
 		/**
 		 * Constructor
@@ -340,9 +357,10 @@ public class BigImageThresholder implements Runnable {
 		 * @param thresh
 		 *          Threshold value
 		 */
-		public TileThresholdingTask(Rectangle tileRectangle, int thresh) {
+		public TileThresholdingTask(Rectangle tileRectangle, List<Double> thresh, int[] usedClasses) {
 			this.tileRectangle = tileRectangle;
 			this.thresh = thresh;
+			this.usedClasses = usedClasses;
 		}
 
 		@Override
@@ -376,20 +394,32 @@ public class BigImageThresholder implements Runnable {
 				// Convert to gray
 				LUT lut = resultSeq.createCompatibleLUT();
 				resultSeq = SequenceUtil.convertColor(resultSeq, BufferedImage.TYPE_BYTE_GRAY, lut);
-
-				// Thresholding
-				lut = resultSeq.createCompatibleLUT();
-				lut.getLutChannel(0).setMin(thresh);
-				lut.getLutChannel(0).setMax(thresh + 0.1);
-				lut.getLutChannel(0).setMinBound(thresh);
-				lut.getLutChannel(0).setMaxBound(thresh + 0.1);
-
-				resultSeq = SequenceUtil.convertColor(resultSeq, BufferedImage.TYPE_BYTE_GRAY, lut);
+				
+				resultSeq.beginUpdate();
 				SequenceDataIterator it = new SequenceDataIterator(resultSeq);
 				while (!it.done()) {
-					it.set(it.get() > 0 ? 0 : 255);
+					double floorVal = 0;
+					double ceilVal = 0;
+					boolean useIt = false;
+					for (int i = 0; i < usedClasses.length; i++) {
+						if (i > 0) {
+							floorVal = thresh.get(i-1);
+						}
+						if (i < usedClasses.length-1) {
+							ceilVal = thresh.get(i);
+						} else {
+							ceilVal = resultSeq.getDataTypeMax()+1;
+						}
+						
+						if (usedClasses[i] != 0 && it.get() >= floorVal && it.get() < ceilVal) {
+							useIt = true;
+							break;
+						}
+					}
+					it.set((useIt)? resultSeq.getDataTypeMax(): 0);
 					it.next();
 				}
+				resultSeq.endUpdate();
 
 				// Copy data to full result
 				writer.saveTile(resultSeq.getFirstImage(), tileRectangle.getLocation());
@@ -411,9 +441,10 @@ public class BigImageThresholder implements Runnable {
 							Runtime.getRuntime().gc();
 						}
 						if (BigImageThresholder.this.listener != null) {
-							BigImageThresholder.this.listener
-							    .notifyProgress(0.67 + 0.33 * ((double) BigImageThresholder.this.numProcessedTiles
-							        / (double) BigImageThresholder.this.totalProcessedTiles), 1.0);
+							BigImageThresholder.this.listener.notifyProgress(
+							    0.67 + 0.33 * ((double) BigImageThresholder.this.numProcessedTiles
+							        / (double) BigImageThresholder.this.totalProcessedTiles),
+							    1.0, "Saving result (tile " + numProcessedTiles + "/" + totalProcessedTiles + ")", null);
 						}
 
 						if (BigImageThresholder.this.isInterrupted) {

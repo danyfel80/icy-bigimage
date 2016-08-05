@@ -8,7 +8,7 @@ import org.apache.commons.io.FilenameUtils;
 
 import algorithms.danyfel80.bigimage.io.BigImageReader;
 import icy.common.exception.UnsupportedFormatException;
-import icy.common.listener.ProgressListener;
+import icy.common.listener.RichProgressListener;
 import icy.gui.frame.progress.FailedAnnounceFrame;
 import plugins.adufour.blocks.lang.Block;
 import plugins.adufour.blocks.util.VarList;
@@ -109,12 +109,12 @@ public class LoadBigImage extends EzPlug implements Block, EzStoppable {
 		long startTime = System.nanoTime();
 		try {
 			this.loader = new BigImageReader(path, isTiled ? new Rectangle(tileX, tileY, tileW, tileH) : null, maxWidth,
-			    maxHeight, new ProgressListener() {
+			    maxHeight, new RichProgressListener() {
 						@Override
-						public boolean notifyProgress(double position, double length) {
+						public boolean notifyProgress(double position, double length, String message, Object data) {
 							if (LoadBigImage.this.getUI() != null) {
 								LoadBigImage.this.getUI().setProgressBarValue(position/length);
-								LoadBigImage.this.getUI().setProgressBarMessage("Loading image... (tile " + (int)position + "/" + (int)length + ")");
+								LoadBigImage.this.getUI().setProgressBarMessage(message + "... (tile " + (int)position + "/" + (int)length + ")");
 							}
 							return true;
 						}

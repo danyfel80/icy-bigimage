@@ -14,6 +14,7 @@ import org.apache.commons.io.FilenameUtils;
 
 import icy.common.exception.UnsupportedFormatException;
 import icy.common.listener.ProgressListener;
+import icy.common.listener.RichProgressListener;
 import icy.image.IcyBufferedImage;
 import icy.image.IcyBufferedImageUtil;
 import icy.sequence.Sequence;
@@ -47,7 +48,7 @@ public class BigImageReader implements Runnable {
 	/**
 	 * Listener to manage progress events.
 	 */
-	private final ProgressListener listener;
+	private final RichProgressListener listener;
 	/**
 	 * The size of the image to load.
 	 */
@@ -114,7 +115,7 @@ public class BigImageReader implements Runnable {
 	 *           If the file is unreadable.
 	 */
 	public BigImageReader(final File path, final Rectangle tile, final int maxWidth, final int maxHeight,
-	    final ProgressListener listener) throws IllegalArgumentException, UnsupportedFormatException, IOException {
+	    final RichProgressListener listener) throws IllegalArgumentException, UnsupportedFormatException, IOException {
 		// Check file existence
 		if (path.exists()) {
 			this.path = path;
@@ -217,6 +218,7 @@ public class BigImageReader implements Runnable {
 		// Compute tile size and count
 		long usedMem = Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory();
 		long ramAvailable = Runtime.getRuntime().maxMemory() - usedMem;
+		ramAvailable = (long)(ramAvailable * 0.75);
 		int processors = Runtime.getRuntime().availableProcessors();
 
 		Dimension loadTileSize = new Dimension(inSize);
@@ -260,10 +262,10 @@ public class BigImageReader implements Runnable {
 			// (long)(2*processors) < (long)loadTileDataSize);
 		}
 		this.totalProcessedTiles = loadTileCount.width * loadTileCount.height;
-		System.out.println("" + totalProcessedTiles + " tiles of " + loadTileSize.width + " by " + loadTileSize.height);
+		System.out.println("" + totalProcessedTiles + " tiles of " + loadTileSize.width + " by " + loadTileSize.height + " for " + tile.getSize());
 		// Announce loading start
 		if (this.listener != null) {
-			this.listener.notifyProgress(numProcessedTiles, totalProcessedTiles);
+			this.listener.notifyProgress(numProcessedTiles, totalProcessedTiles, "Loading tiles", null);
 		}
 
 		// Load tiles using a thread pool
@@ -414,7 +416,7 @@ public class BigImageReader implements Runnable {
 							Runtime.getRuntime().gc();
 						}
 						if (listener != null) {
-							BigImageReader.this.listener.notifyProgress(numProcessedTiles, totalProcessedTiles);
+							BigImageReader.this.listener.notifyProgress(numProcessedTiles, totalProcessedTiles, "Loading image", null);
 						}
 
 						if (isInterrupted && !isShutdownNow) {

@@ -1,14 +1,16 @@
 package plugins.danyfel80.bigimage.segmentation;
 
 import algorithms.danyfel80.bigimage.segmentation.BigImageThresholder;
-import icy.common.listener.ProgressListener;
+import icy.common.listener.RichProgressListener;
 import plugins.adufour.blocks.lang.Block;
 import plugins.adufour.blocks.util.VarList;
 import plugins.adufour.ezplug.EzPlug;
 import plugins.adufour.ezplug.EzStoppable;
+import plugins.adufour.ezplug.EzVar;
 import plugins.adufour.ezplug.EzVarBoolean;
 import plugins.adufour.ezplug.EzVarFile;
-import plugins.adufour.ezplug.EzVarInteger;
+import plugins.adufour.ezplug.EzVarIntegerArrayNative;
+import plugins.adufour.ezplug.EzVarListener;
 
 /**
  * This plugin performs a thresholding on a big image and stocks the result on
@@ -19,7 +21,8 @@ import plugins.adufour.ezplug.EzVarInteger;
 public class ThresholdBigImage extends EzPlug implements Block, EzStoppable {
 
 	private EzVarFile inInPathVar = new EzVarFile("Input file", "");
-	private EzVarInteger inClsVar = new EzVarInteger("Classes", 2, 6, 1);
+	private EzVarIntegerArrayNative inClsFlagVar = new EzVarIntegerArrayNative("Used Classes", new int[][] { { 0, 1 } },
+	    true);
 	private EzVarFile inOutPathVar = new EzVarFile("Output file", "");
 
 	private EzVarBoolean outSuccessVar = new EzVarBoolean("Success", true);
@@ -37,7 +40,7 @@ public class ThresholdBigImage extends EzPlug implements Block, EzStoppable {
 	@Override
 	public void declareInput(VarList inputMap) {
 		inputMap.add(inInPathVar.name, inInPathVar.getVariable());
-		inputMap.add(inClsVar.name, inClsVar.getVariable());
+		inputMap.add(inClsFlagVar.name, inClsFlagVar.getVariable());
 		inputMap.add(inOutPathVar.name, inOutPathVar.getVariable());
 	}
 
@@ -61,7 +64,20 @@ public class ThresholdBigImage extends EzPlug implements Block, EzStoppable {
 	@Override
 	protected void initialize() {
 		addEzComponent(inInPathVar);
-		addEzComponent(inClsVar);
+		addEzComponent(inClsFlagVar);
+		inClsFlagVar.addVarChangeListener(new EzVarListener<int[]>() {
+			
+			@Override
+			public void variableChanged(EzVar<int[]> source, int[] newValue) {
+				if (newValue.length > 6) {
+					int[] val = new int[6];
+					for (int i = 0; i < val.length; i++) {
+						val[i] = newValue[i];
+					}
+					inClsFlagVar.setValue(val);
+				}
+			}
+		});
 		addEzComponent(inOutPathVar);
 	}
 
@@ -74,15 +90,15 @@ public class ThresholdBigImage extends EzPlug implements Block, EzStoppable {
 	protected void execute() {
 		long startTime = System.nanoTime();
 		try {
-			this.thresholder = new BigImageThresholder(inInPathVar.getValue(), inClsVar.getValue(), inOutPathVar.getValue(),
-			    new ProgressListener() {
+			this.thresholder = new BigImageThresholder(inInPathVar.getValue(), inClsFlagVar.getValue(), inOutPathVar.getValue(),
+			    new RichProgressListener() {
 
 				    @Override
-				    public boolean notifyProgress(double position, double length) {
+				    public boolean notifyProgress(double position, double length, String message, Object data) {
 					    if (ThresholdBigImage.this.getUI() != null) {
 						    ThresholdBigImage.this.getUI().setProgressBarValue(position / length);
 						    ThresholdBigImage.this.getUI()
-			              .setProgressBarMessage(String.format("Thresholding... %.02f%%", position * 100.0 / length));
+			              .setProgressBarMessage(String.format(message + "... %.02f%%", position * 100.0 / length));
 					    }
 					    return false;
 				    }
@@ -124,7 +140,9 @@ public class ThresholdBigImage extends EzPlug implements Block, EzStoppable {
 	 */
 	@Override
 	public void stopExecution() {
-		this.thresholder.interrupt();
+		if (this.thresholder != null) {
+			this.thresholder.interrupt();
+		}
 		super.stopExecution();
 	}
 
