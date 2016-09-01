@@ -13,7 +13,6 @@ import java.util.concurrent.TimeUnit;
 import org.apache.commons.io.FilenameUtils;
 
 import icy.common.exception.UnsupportedFormatException;
-import icy.common.listener.ProgressListener;
 import icy.common.listener.RichProgressListener;
 import icy.image.IcyBufferedImage;
 import icy.image.IcyBufferedImageUtil;
