@@ -18,6 +18,11 @@ import icy.image.IcyBufferedImage;
 import icy.image.IcyBufferedImageUtil;
 import icy.sequence.Sequence;
 import icy.type.DataType;
+import icy.type.dimension.Dimension3D;
+import icy.type.dimension.Dimension3D.Double;
+import ome.units.quantity.Length;
+import ome.units.unit.Unit;
+import ome.xml.model.enums.UnitsLength;
 import plugins.kernel.importer.LociImporterPlugin;
 
 /**
@@ -88,6 +93,8 @@ public class BigImageReader implements Runnable {
 	 * Resulting sequence.
 	 */
 	private Sequence loadedSequence;
+	private Length[] inPixelSize;
+	private Length[] outPixelSize;
 
 	/**
 	 * Constructor for the image reader. The specified image will extract the
@@ -123,6 +130,7 @@ public class BigImageReader implements Runnable {
 		}
 		
 		Dimension dims = BigImageUtil.getImageDimension(this.path);
+		this.inPixelSize = BigImageUtil.getImagePixelSize(this.path);
 		
 		// Check tile size
 		if (tile == null) {
@@ -202,17 +210,26 @@ public class BigImageReader implements Runnable {
 		}
 
 		this.outSize = new Dimension(inSize);
-		double scale = 1;
+		
+		double scale = 1d;
+		double pixelScale = 1d;
 
-		while (outSize.width > maxWidth && outSize.height > maxHeight) {
+		while (outSize.width > maxWidth || outSize.height > maxHeight) {
 			outSize.width /= 2;
 			outSize.height /= 2;
-			scale /= 2;
+			scale /= 2d;	
+			pixelScale *= 2d;
 		}
+		
+		this.outPixelSize = new Length[2];
+		this.outPixelSize[0] = new Length(inPixelSize[0].value().doubleValue()*pixelScale, inPixelSize[0].unit());
+		this.outPixelSize[1] = new Length(inPixelSize[1].value().doubleValue()*pixelScale, inPixelSize[1].unit());
 
 		System.out.println("Loading " + FilenameUtils.getName(path.getAbsolutePath()) + " scaled at " + scale);
 		System.out.println("Original size: (" + this.tile.width + "x" + this.tile.height + "), Final size: ("
 		    + this.outSize.width + "x" + this.outSize.height + ")");
+		
+		
 
 		// Compute tile size and count
 		long usedMem = Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory();
@@ -313,6 +330,10 @@ public class BigImageReader implements Runnable {
 			loadedImage.endUpdate();
 			loadedSequence = new Sequence(loadedImage);
 			loadedSequence.setName(FilenameUtils.getBaseName(path.getAbsolutePath()));
+			loadedSequence.getMetadata().setPixelsPhysicalSizeX(this.outPixelSize[0], 0);
+			loadedSequence.getMetadata().setPixelsPhysicalSizeY(this.outPixelSize[1], 0);
+			loadedSequence.getMetadata().setPlanePositionX(new Length(tile.getLocation().getX(), outPixelSize[0].unit()), 0, 0);
+			loadedSequence.getMetadata().setPlanePositionY(new Length(tile.getLocation().getY(), outPixelSize[1].unit()), 0, 0);
 		}
 	}
 

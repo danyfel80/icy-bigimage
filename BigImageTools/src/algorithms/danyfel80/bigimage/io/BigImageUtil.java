@@ -9,7 +9,9 @@ import java.io.IOException;
 
 import icy.common.exception.UnsupportedFormatException;
 import icy.type.DataType;
+import icy.type.dimension.Dimension3D;
 import loci.formats.ome.OMEXMLMetadataImpl;
+import ome.units.quantity.Length;
 import plugins.kernel.importer.LociImporterPlugin;
 
 /**
@@ -131,6 +133,21 @@ public class BigImageUtil {
 			} catch (IOException e2) {
 				throw e2;
 			}
+		}
+	}
+	
+	public static Length[] getImagePixelSize(File path) throws UnsupportedFormatException, IOException {
+		LociImporterPlugin importer = new LociImporterPlugin();
+		try {
+			importer.open(path.getAbsolutePath(), 0);
+			OMEXMLMetadataImpl imgProps = importer.getMetaData();
+			Length[] pixelSize = new Length[3];
+			pixelSize[0] = imgProps.getPixelsPhysicalSizeX(0);
+			pixelSize[1] = imgProps.getPixelsPhysicalSizeY(0);
+			pixelSize[2] = imgProps.getPixelsPhysicalSizeZ(0);
+			return pixelSize;
+		} finally {
+			importer.close();
 		}
 	}
 }
