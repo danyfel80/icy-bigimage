@@ -9,11 +9,14 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
+import javax.vecmath.Point3d;
+
 import algorithms.danyfel80.bigimage.io.BigImageWriter;
 import icy.image.IcyBufferedImage;
 import icy.image.IcyBufferedImageUtil;
 import loci.common.services.ServiceException;
 import loci.formats.FormatException;
+import ome.units.UNITS;
 import plugins.adufour.ezplug.EzPlug;
 import plugins.adufour.ezplug.EzStoppable;
 import plugins.adufour.ezplug.EzVarFile;
@@ -85,10 +88,15 @@ public class SaveBigImage extends EzPlug implements EzStoppable {
 			n++;
 		if (diffHeight > 0)
 			m++;
-
+		
+		Point3d pxSize = new Point3d();
+		pxSize.x = inSeq.getValue().getMetadata().getPixelsPhysicalSizeX(0).value(UNITS.MICROM).doubleValue();
+		pxSize.y = inSeq.getValue().getMetadata().getPixelsPhysicalSizeY(0).value(UNITS.MICROM).doubleValue();
+		pxSize.z = inSeq.getValue().getMetadata().getPixelsPhysicalSizeZ(0).value(UNITS.MICROM).doubleValue();
+		
 		saver = null;
 		try {
-			saver = new BigImageWriter(file, new Dimension(image.getWidth(), image.getHeight()), image.getSizeC(),
+			saver = new BigImageWriter(file, new Dimension(image.getWidth(), image.getHeight()), pxSize, image.getSizeC(),
 					image.getDataType_(), new Dimension(tileSizeX, tileSizeY));
 		} catch (ServiceException | FormatException | IOException e1) {
 			e1.printStackTrace();

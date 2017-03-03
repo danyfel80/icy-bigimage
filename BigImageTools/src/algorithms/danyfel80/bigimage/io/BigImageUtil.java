@@ -9,8 +9,8 @@ import java.io.IOException;
 
 import icy.common.exception.UnsupportedFormatException;
 import icy.type.DataType;
-import icy.type.dimension.Dimension3D;
 import loci.formats.ome.OMEXMLMetadataImpl;
+import ome.units.UNITS;
 import ome.units.quantity.Length;
 import plugins.kernel.importer.LociImporterPlugin;
 
@@ -143,8 +143,17 @@ public class BigImageUtil {
 			OMEXMLMetadataImpl imgProps = importer.getMetaData();
 			Length[] pixelSize = new Length[3];
 			pixelSize[0] = imgProps.getPixelsPhysicalSizeX(0);
+			if (pixelSize[0] == null) {
+				pixelSize[0] = new Length(new Double(1), UNITS.MICROM);
+			}
 			pixelSize[1] = imgProps.getPixelsPhysicalSizeY(0);
+			if (pixelSize[1] == null) {
+				pixelSize[1] = new Length(new Double(1), UNITS.MICROM);
+			}
 			pixelSize[2] = imgProps.getPixelsPhysicalSizeZ(0);
+			if (pixelSize[2] == null) {
+				pixelSize[2] = new Length(new Double(1), UNITS.MICROM);
+			}
 			return pixelSize;
 		} finally {
 			importer.close();

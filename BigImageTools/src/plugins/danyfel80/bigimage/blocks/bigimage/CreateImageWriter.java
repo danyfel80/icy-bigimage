@@ -3,6 +3,8 @@ package plugins.danyfel80.bigimage.blocks.bigimage;
 import java.awt.Dimension;
 import java.io.IOException;
 
+import javax.vecmath.Point3d;
+
 import algorithms.danyfel80.bigimage.io.BigImageWriter;
 import icy.type.DataType;
 import loci.common.services.ServiceException;
@@ -25,6 +27,7 @@ public class CreateImageWriter extends EzPlug implements Block {
 
 	private VarFile inFile;
 	private Var<Dimension> inImageSize;
+	private Var<Point3d> inPixelSize;
 	private Var<Dimension> inTileSize;
 	private VarInteger inChannelSize;
 	private VarEnum<DataType> inDataType;
@@ -42,6 +45,7 @@ public class CreateImageWriter extends EzPlug implements Block {
 	public void declareInput(VarList inputMap) {
 		inputMap.add("File", inFile = new VarFile("File", null));
 		inputMap.add("Image size", inImageSize = new Var<>("Image size", Dimension.class));
+		inputMap.add("Pixel size", inPixelSize = new Var<>("Pixel Size",new Point3d(1, 1, 1)));
 		inputMap.add("Tile size", inTileSize = new Var<>("Tile size", Dimension.class));
 		inputMap.add("Channels", inChannelSize = new VarInteger("Channels", 3));
 		inputMap.add("Data type", inDataType = new VarEnum<DataType>("Data type", DataType.UBYTE));
@@ -76,8 +80,9 @@ public class CreateImageWriter extends EzPlug implements Block {
 	@Override
 	protected void execute() {
 		try {
+			
 			BigImageWriter writer;
-			writer = new BigImageWriter(inFile.getValue(), inImageSize.getValue(), inChannelSize.getValue(),
+			writer = new BigImageWriter(inFile.getValue(), inImageSize.getValue(), inPixelSize.getValue(), inChannelSize.getValue(),
 			    inDataType.getValue(), inTileSize.getValue());
 			this.outImageWriter.setValue(writer);
 		} catch (ServiceException | FormatException | IOException e) {

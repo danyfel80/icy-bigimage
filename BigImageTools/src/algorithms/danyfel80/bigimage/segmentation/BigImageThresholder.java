@@ -14,6 +14,8 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
+import javax.vecmath.Point3d;
+
 import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.lang.ArrayUtils;
 
@@ -29,6 +31,8 @@ import icy.sequence.SequenceUtil;
 import icy.type.DataType;
 import loci.common.services.ServiceException;
 import loci.formats.FormatException;
+import ome.units.UNITS;
+import ome.units.quantity.Length;
 import plugins.adufour.thresholder.KMeans;
 import plugins.kernel.importer.LociImporterPlugin;
 
@@ -220,7 +224,18 @@ public class BigImageThresholder implements Runnable {
 				    + "_Threshold(" + thresh + ").tiff";
 				outputPath = new File(outPathString);
 			}
-			this.writer = new BigImageWriter(outputPath, imgSize, 1, DataType.UBYTE, tileInfo.getSize());
+			Length[] pixSize;
+			try {
+				pixSize = BigImageUtil.getImagePixelSize(inputPath);
+			} catch (UnsupportedFormatException e) {
+				e.printStackTrace();
+				return;
+			}
+			Point3d pixelSize = new Point3d();
+			pixelSize.x = pixSize[0].value(UNITS.MICROM).doubleValue();
+			pixelSize.y = pixSize[1].value(UNITS.MICROM).doubleValue();
+			pixelSize.z = pixSize[2].value(UNITS.MICROM).doubleValue();
+			this.writer = new BigImageWriter(outputPath, imgSize, pixelSize, 1, DataType.UBYTE, tileInfo.getSize());
 		} catch (ServiceException | FormatException | IOException e1) {
 			e1.printStackTrace();
 			return;

@@ -5,6 +5,8 @@ import java.awt.Point;
 import java.io.File;
 import java.io.IOException;
 
+import javax.vecmath.Point3d;
+
 import icy.file.FileUtil;
 import icy.image.IcyBufferedImage;
 import icy.sequence.MetaDataUtil;
@@ -29,6 +31,7 @@ public class BigImageWriter {
 
 	private final File path;
 	private final Dimension imgSize;
+	private final Point3d imgPixelSize;
 	private final int imgChannelSize;
 	private final DataType imgDataType;
 	private final Dimension tileSize;
@@ -40,7 +43,7 @@ public class BigImageWriter {
 	private TiffWriter writer;
 	
 
-	public BigImageWriter(File path, Dimension imgSize, int imgChannelSize, DataType imgDataType, Dimension tileSize)
+	public BigImageWriter(File path, Dimension imgSize, Point3d imgPixelSize, int imgChannelSize, DataType imgDataType, Dimension tileSize)
 	    throws ServiceException, FormatException, IOException {
 		// Set parameters
 		if (path == null) {
@@ -53,6 +56,14 @@ public class BigImageWriter {
 		}
 		this.imgSize = new Dimension(imgSize);
 
+		if (imgPixelSize == null) {
+			throw new IllegalArgumentException("Invalid image pixel size: " + imgPixelSize);
+		}
+		this.imgPixelSize = imgPixelSize;
+		imgPixelSize.x = (imgPixelSize.x == 0)?1: imgPixelSize.x;
+		imgPixelSize.y = (imgPixelSize.y == 0)?1: imgPixelSize.y;
+		imgPixelSize.z = (imgPixelSize.z == 0)?1: imgPixelSize.z;
+		
 		if (imgChannelSize < 1) {
 			throw new IllegalArgumentException("Invalid channel size: " + imgChannelSize);
 		}
@@ -86,6 +97,10 @@ public class BigImageWriter {
 		this.isSeparateChannels = getSeparateChannelFlag(writer, imgChannelSize, imgDataType);
 		MetaDataUtil.setMetaData(mdi, imgSize.width, imgSize.height, imgChannelSize, 1, 1, -1, -1, imgDataType,
 		    isSeparateChannels);
+		MetaDataUtil.setPixelSizeX(mdi, 0, imgPixelSize.x);
+		MetaDataUtil.setPixelSizeY(mdi, 0, imgPixelSize.y);
+		MetaDataUtil.setPixelSizeZ(mdi, 0, imgPixelSize.z);
+		
 		this.isLittleEndian = !mdi.getPixelsBinDataBigEndian(0, 0);
 		writer.setMetadataRetrieve(mdi);
 		writer.setCompression(TiffCompression.LZW.getCodecName());

@@ -18,11 +18,7 @@ import icy.image.IcyBufferedImage;
 import icy.image.IcyBufferedImageUtil;
 import icy.sequence.Sequence;
 import icy.type.DataType;
-import icy.type.dimension.Dimension3D;
-import icy.type.dimension.Dimension3D.Double;
 import ome.units.quantity.Length;
-import ome.units.unit.Unit;
-import ome.xml.model.enums.UnitsLength;
 import plugins.kernel.importer.LociImporterPlugin;
 
 /**
