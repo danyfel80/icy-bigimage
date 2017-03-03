@@ -1,16 +1,21 @@
-package plugins.danyfel80.bigimage.segmentation;
+package plugins.danyfel80.bigimage.blocks;
 
 import plugins.adufour.blocks.lang.Block;
 import plugins.adufour.blocks.util.VarList;
 import plugins.adufour.ezplug.EzPlug;
+import plugins.adufour.vars.lang.Var;
+import plugins.adufour.vars.lang.VarInteger;
 
 /**
- * This plugin performs a thresholding on a big image and stocks the result on
- * the hard disk.
- * 
+ * Creates a Dimension block
  * @author Daniel Felipe Gonzalez Obando
  */
-public class BigImageThresholder extends EzPlug implements Block {
+public class Dimension extends EzPlug implements Block {
+
+	private VarInteger inWidth;
+	private VarInteger inHeight;
+
+	private Var<java.awt.Dimension> outDimension;
 
 	/*
 	 * (non-Javadoc)
@@ -21,8 +26,8 @@ public class BigImageThresholder extends EzPlug implements Block {
 	 */
 	@Override
 	public void declareInput(VarList inputMap) {
-		// TODO Auto-generated method stub
-
+		inputMap.add("Width", inWidth = new VarInteger("Width", 0));
+		inputMap.add("Height", inHeight = new VarInteger("Height", 0));
 	}
 
 	/*
@@ -34,41 +39,20 @@ public class BigImageThresholder extends EzPlug implements Block {
 	 */
 	@Override
 	public void declareOutput(VarList outputMap) {
-		// TODO Auto-generated method stub
-
+		outputMap.add("Dimension", outDimension = new Var<java.awt.Dimension>("Dimension", java.awt.Dimension.class));
 	}
 
-	/*
-	 * (non-Javadoc)
-	 * 
-	 * @see plugins.adufour.ezplug.EzPlug#clean()
-	 */
 	@Override
 	public void clean() {
-		// TODO Auto-generated method stub
-
 	}
 
-	/*
-	 * (non-Javadoc)
-	 * 
-	 * @see plugins.adufour.ezplug.EzPlug#execute()
-	 */
 	@Override
 	protected void execute() {
-		// TODO Auto-generated method stub
-
+		outDimension.setValue(new java.awt.Dimension(inWidth.getValue(), inHeight.getValue()));
 	}
 
-	/*
-	 * (non-Javadoc)
-	 * 
-	 * @see plugins.adufour.ezplug.EzPlug#initialize()
-	 */
 	@Override
 	protected void initialize() {
-		// TODO Auto-generated method stub
-
 	}
 
 }
