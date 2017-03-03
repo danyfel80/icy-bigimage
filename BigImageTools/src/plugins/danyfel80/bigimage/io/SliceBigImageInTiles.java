@@ -16,7 +16,7 @@
  * You should have received a copy of the GNU General Public License
  * along with Icy. If not, see <http://www.gnu.org/licenses/>.
  */
-package plugins.danyfel80.bigimage.blocks.bigimage;
+package plugins.danyfel80.bigimage.io;
 
 import java.awt.Dimension;
 import java.io.File;
