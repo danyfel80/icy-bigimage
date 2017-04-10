@@ -95,7 +95,7 @@ public class BigImageWriter {
 
 		OMEXMLMetadataImpl mdi = OMEUtil.createOMEMetadata();
 		this.isSeparateChannels = getSeparateChannelFlag(writer, imgChannelSize, imgDataType);
-		MetaDataUtil.setMetaData(mdi, imgSize.width, imgSize.height, imgChannelSize, 1, 1, -1, -1, imgDataType,
+		MetaDataUtil.setMetaData(mdi, imgSize.width, imgSize.height, imgChannelSize, 1, 1, imgDataType,
 		    isSeparateChannels);
 		MetaDataUtil.setPixelSizeX(mdi, 0, imgPixelSize.x);
 		MetaDataUtil.setPixelSizeY(mdi, 0, imgPixelSize.y);

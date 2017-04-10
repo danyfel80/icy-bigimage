@@ -144,15 +144,15 @@ public class BigImageUtil {
 			Length[] pixelSize = new Length[3];
 			pixelSize[0] = imgProps.getPixelsPhysicalSizeX(0);
 			if (pixelSize[0] == null) {
-				pixelSize[0] = new Length(new Double(1), UNITS.MICROM);
+				pixelSize[0] = new Length(new Double(1), UNITS.MICROMETER);
 			}
 			pixelSize[1] = imgProps.getPixelsPhysicalSizeY(0);
 			if (pixelSize[1] == null) {
-				pixelSize[1] = new Length(new Double(1), UNITS.MICROM);
+				pixelSize[1] = new Length(new Double(1), UNITS.MICROMETER);
 			}
 			pixelSize[2] = imgProps.getPixelsPhysicalSizeZ(0);
 			if (pixelSize[2] == null) {
-				pixelSize[2] = new Length(new Double(1), UNITS.MICROM);
+				pixelSize[2] = new Length(new Double(1), UNITS.MICROMETER);
 			}
 			return pixelSize;
 		} finally {

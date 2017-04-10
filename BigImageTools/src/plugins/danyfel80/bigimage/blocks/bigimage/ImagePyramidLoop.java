@@ -98,8 +98,8 @@ public class ImagePyramidLoop extends Loop {
 		this.pixelSize = new Var<>("Image size", new Point3d(1, 1, 1));
 		try {
 			Length[] pxS = BigImageUtil.getImagePixelSize(workingFile.getValue());
-			this.pixelSize.setValue(new Point3d(pxS[0].value(UNITS.MICROM).doubleValue(),
-					pxS[1].value(UNITS.MICROM).doubleValue(), pxS[2].value(UNITS.MICROM).doubleValue()));
+			this.pixelSize.setValue(new Point3d(pxS[0].value(UNITS.MICROMETER).doubleValue(),
+					pxS[1].value(UNITS.MICROMETER).doubleValue(), pxS[2].value(UNITS.MICROMETER).doubleValue()));
 		} catch (IOException | UnsupportedFormatException e) {
 			e.printStackTrace();
 		}

@@ -90,9 +90,9 @@ public class SaveBigImage extends EzPlug implements EzStoppable {
 			m++;
 		
 		Point3d pxSize = new Point3d();
-		pxSize.x = inSeq.getValue().getMetadata().getPixelsPhysicalSizeX(0).value(UNITS.MICROM).doubleValue();
-		pxSize.y = inSeq.getValue().getMetadata().getPixelsPhysicalSizeY(0).value(UNITS.MICROM).doubleValue();
-		pxSize.z = inSeq.getValue().getMetadata().getPixelsPhysicalSizeZ(0).value(UNITS.MICROM).doubleValue();
+		pxSize.x = inSeq.getValue().getMetadata().getPixelsPhysicalSizeX(0).value(UNITS.MICROMETER).doubleValue();
+		pxSize.y = inSeq.getValue().getMetadata().getPixelsPhysicalSizeY(0).value(UNITS.MICROMETER).doubleValue();
+		pxSize.z = inSeq.getValue().getMetadata().getPixelsPhysicalSizeZ(0).value(UNITS.MICROMETER).doubleValue();
 		
 		saver = null;
 		try {

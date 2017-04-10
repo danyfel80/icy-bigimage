@@ -232,9 +232,9 @@ public class BigImageThresholder implements Runnable {
 				return;
 			}
 			Point3d pixelSize = new Point3d();
-			pixelSize.x = pixSize[0].value(UNITS.MICROM).doubleValue();
-			pixelSize.y = pixSize[1].value(UNITS.MICROM).doubleValue();
-			pixelSize.z = pixSize[2].value(UNITS.MICROM).doubleValue();
+			pixelSize.x = pixSize[0].value(UNITS.MICROMETER).doubleValue();
+			pixelSize.y = pixSize[1].value(UNITS.MICROMETER).doubleValue();
+			pixelSize.z = pixSize[2].value(UNITS.MICROMETER).doubleValue();
 			this.writer = new BigImageWriter(outputPath, imgSize, pixelSize, 1, DataType.UBYTE, tileInfo.getSize());
 		} catch (ServiceException | FormatException | IOException e1) {
 			e1.printStackTrace();
