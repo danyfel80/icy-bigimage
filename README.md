@@ -35,9 +35,10 @@ In danyfel.bigimage.io:
 In order to be able to work with this project you must have installed the following software:
 
 - **Icy**, version 1.9.5.1 or above. ( [Available here](http://icy.bioimageanalysis.org) )
-
+  - The following plugins should be already installed in order to execute BigImageTools:
+    - EzPlug SDK
+    - Protocols SDK
 - **Eclipse**, version _Neon_ or above. Make sure to have the _Buildship_ plugin installed. ([Available here](http://www.eclipse.org/downloads/))
-
 - **Icy4Eclipse** plugin for Eclipse, the latest version available. Follow [these](http://icy.bioimageanalysis.org/index.php?display=startDevWithIcy) instructions.
 
 ### Setup
