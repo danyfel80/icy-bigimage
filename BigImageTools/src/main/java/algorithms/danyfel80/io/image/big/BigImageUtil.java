@@ -187,6 +187,17 @@ public class BigImageUtil {
 		}
 	}
 
+	/**
+	 * Retrieves the metadata stored in a given file.
+	 * 
+	 * @param path
+	 *          File to read.
+	 * @return Metadata of the file.
+	 * @throws UnsupportedFormatException
+	 *           If the format of the file is not compatible.
+	 * @throws IOException
+	 *           If the file cannot read appropriately.
+	 */
 	public static OMEXMLMetadata getImageMetadata(File path) throws UnsupportedFormatException, IOException {
 		LociImporterPlugin importer = new LociImporterPlugin();
 		importer.open(path.getAbsolutePath(), 0);
@@ -197,6 +208,17 @@ public class BigImageUtil {
 		}
 	}
 
+	/**
+	 * Retrieves the name of the image stored in the given file.
+	 * 
+	 * @param path
+	 *          File to read.
+	 * @return Name of the image.
+	 * @throws UnsupportedFormatException
+	 *           If the image format is not compatible.
+	 * @throws IOException
+	 *           If the file cannot be read.
+	 */
 	public static String getImageName(File path) throws UnsupportedFormatException, IOException {
 		LociImporterPlugin importer = new LociImporterPlugin();
 		importer.open(path.getAbsolutePath(), 0);
@@ -206,5 +228,31 @@ public class BigImageUtil {
 		} finally {
 			importer.close();
 		}
+	}
+
+	/**
+	 * Finds the resolution level that fits an image inside a given dimension. The
+	 * image is stored in the given file.
+	 * 
+	 * @param file
+	 *          Image file.
+	 * @param targetDimension
+	 *          Dimension to fit.
+	 * @return Resolution level that fits inside the given dimension.
+	 * @throws IOException
+	 *           If the image file cannot be read.
+	 * @throws UnsupportedFormatException
+	 *           If the image format is not compatible.
+	 */
+	public static int getResolutionLevel(File file, Dimension targetDimension)
+			throws IOException, UnsupportedFormatException {
+		Dimension dims = getImageDimension(file);
+		int resolution = 0;
+		while (dims.width > targetDimension.width || dims.height > targetDimension.height) {
+			resolution++;
+			dims.width /= 2;
+			dims.height /= 2;
+		}
+		return resolution;
 	}
 }

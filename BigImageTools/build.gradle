@@ -1,7 +1,7 @@
 apply plugin: 'java-library'
 apply plugin: 'eclipse'
 
-version = '0.0.1'
+version = '1.0.0'
 task wrapper(type: Wrapper) {
 	gradleVersion = '4.3'
 }
@@ -47,4 +47,19 @@ eclipse {
 		natures += ['icy.icy4eclipse.core.icynature']
 		natures += ['org.eclipse.buildship.core.gradleprojectnature']
 	}
+}
+
+task sourcesJar(type: Jar, dependsOn: classes) {
+    classifier = 'sources'
+    from sourceSets.main.allSource
+}
+
+task javadocJar(type: Jar, dependsOn: javadoc) {
+	classifier = 'javadoc'
+	from javadoc.destinationDir
+}
+
+artifacts {
+	archives sourcesJar
+	archives javadocJar
 }
