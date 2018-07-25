@@ -104,7 +104,10 @@ public class LoadBigImage extends EzPlug implements Block, EzStoppable {
 		importer.setFilePath(Paths.get(filePath.toString()));
 		importer.setTargetResolution(resolution);
 		importer.setTargetRectangle(new Rectangle(x, y, w, h));
-		importer.addProgressListener(getProgressEventHandler());
+		if (!isHeadLess()) {
+			importer.addProgressListener(getProgressEventHandler());
+		}
+
 		Sequence result;
 		try {
 			result = importer.call();
@@ -112,7 +115,9 @@ public class LoadBigImage extends EzPlug implements Block, EzStoppable {
 			e.printStackTrace();
 			throw new IcyHandledException(e);
 		}
-		importer.removeProgressListener(getProgressEventHandler());
+		if (!isHeadLess()) {
+			importer.removeProgressListener(getProgressEventHandler());
+		}
 		long endTime = System.currentTimeMillis();
 		long executionTime = endTime - startTime;
 

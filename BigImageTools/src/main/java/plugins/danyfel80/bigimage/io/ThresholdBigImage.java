@@ -6,48 +6,57 @@ import java.nio.file.Path;
 import java.nio.file.PathMatcher;
 
 import algorithms.danyfel80.io.sequence.large.LargeSequenceExporter;
-import algorithms.danyfel80.io.sequence.tileprovider.LargeSequenceTileProvider;
+import algorithms.danyfel80.io.sequence.tileprovider.LargeSequenceThresholdedTileProvider;
 import icy.common.exception.UnsupportedFormatException;
 import icy.common.listener.DetailedProgressListener;
 import icy.sequence.MetaDataUtil;
 import icy.system.IcyHandledException;
+import icy.type.DataType;
 import loci.formats.FormatException;
 import loci.formats.ome.OMEXMLMetadata;
 import plugins.adufour.blocks.lang.Block;
 import plugins.adufour.blocks.util.VarList;
 import plugins.adufour.ezplug.EzPlug;
 import plugins.adufour.ezplug.EzStoppable;
+import plugins.adufour.ezplug.EzVarDoubleArrayNative;
 import plugins.adufour.ezplug.EzVarFile;
 import plugins.kernel.importer.LociImporterPlugin;
 
-public class TransferBigImage extends EzPlug implements EzStoppable, Block {
+public class ThresholdBigImage extends EzPlug implements EzStoppable, Block {
 
 	EzVarFile inputFileVar;
+	EzVarDoubleArrayNative thresholdValuesVar;
 	EzVarFile outputFileVar;
 
 	private Path inputFilePath;
+	private double[] thresholdValues;
 	private Path outputFilePath;
-	private LargeSequenceTileProvider tileProvider;
+	private LargeSequenceThresholdedTileProvider tileProvider;
 	private LociImporterPlugin importer;
 	private LargeSequenceExporter exporter;
-
 	private DetailedProgressListener progressListener;
 
 	@Override
 	protected void initialize() {
-		inputFileVar = new EzVarFile("Input File", null);
-		outputFileVar = new EzVarFile("Output File", null);
+		inputFileVar = new EzVarFile("Input image file", null);
+		thresholdValuesVar = new EzVarDoubleArrayNative("Threshold values", new double[][] { new double[] { 100d, 200d } },
+				true);
+		outputFileVar = new EzVarFile("Output image file", null);
 
 		addEzComponent(inputFileVar);
+		addEzComponent(thresholdValuesVar);
 		addEzComponent(outputFileVar);
 	}
 
 	@Override
 	public void declareInput(VarList inputMap) {
-		inputFileVar = new EzVarFile("Input File", null);
-		outputFileVar = new EzVarFile("Output File", null);
+		inputFileVar = new EzVarFile("Input image file", null);
+		thresholdValuesVar = new EzVarDoubleArrayNative("Threshold values", new double[][] { new double[] { 100d, 200d } },
+				true);
+		outputFileVar = new EzVarFile("Output image file", null);
 
 		inputMap.add(inputFileVar.name, inputFileVar.getVariable());
+		inputMap.add(thresholdValuesVar.name, thresholdValuesVar.getVariable());
 		inputMap.add(outputFileVar.name, outputFileVar.getVariable());
 	}
 
@@ -81,6 +90,7 @@ public class TransferBigImage extends EzPlug implements EzStoppable, Block {
 
 	private void retrieveParameters() {
 		inputFilePath = inputFileVar.getValue(true).toPath();
+		thresholdValues = thresholdValuesVar.getValue(true);
 		outputFilePath = outputFileVar.getValue(true).toPath();
 		PathMatcher extensionMatcher = FileSystems.getDefault().getPathMatcher("glob:*.ome.tiff");
 		if (!extensionMatcher.matches(outputFilePath.getFileName())) {
@@ -89,9 +99,10 @@ public class TransferBigImage extends EzPlug implements EzStoppable, Block {
 	}
 
 	private void createTileProvider() {
-		tileProvider = new LargeSequenceTileProvider();
+		tileProvider = new LargeSequenceThresholdedTileProvider();
 		getInputImageImporter();
 		tileProvider.setImporter(importer);
+		tileProvider.setThresholdValues(thresholdValues);
 	}
 
 	private void getInputImageImporter() {
@@ -107,8 +118,7 @@ public class TransferBigImage extends EzPlug implements EzStoppable, Block {
 	private void createImageExporter() throws UnsupportedFormatException, IOException {
 		exporter = new LargeSequenceExporter();
 		exporter.setOutputFilePath(outputFilePath);
-		OMEXMLMetadata metadata = getMetadata();
-		exporter.setOutputImageMetadata(metadata);
+		exporter.setOutputImageMetadata(getMetadata());
 		exporter.setTileProvider(tileProvider);
 		exporter.TILE_SIZE.setSize(importer.getTileWidth(0), importer.getTileHeight(0));
 		if (!isHeadLess()) {
@@ -119,8 +129,7 @@ public class TransferBigImage extends EzPlug implements EzStoppable, Block {
 	private OMEXMLMetadata getMetadata() throws UnsupportedFormatException, IOException {
 		OMEXMLMetadata inputMetadata = (OMEXMLMetadata) importer.getOMEXMLMetaData();
 		OMEXMLMetadata metadata = LargeSequenceExporter.createMetadata(MetaDataUtil.getSizeX(inputMetadata, 0),
-				MetaDataUtil.getSizeY(inputMetadata, 0), MetaDataUtil.getSizeC(inputMetadata, 0),
-				MetaDataUtil.getDataType(inputMetadata, 0));
+				MetaDataUtil.getSizeY(inputMetadata, 0), 1, DataType.UBYTE);
 
 		MetaDataUtil.setName(metadata, 0, MetaDataUtil.getName(inputMetadata, 0));
 		MetaDataUtil.setPixelSizeX(metadata, 0, MetaDataUtil.getPixelSizeX(inputMetadata, 0, 1));
