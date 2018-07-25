@@ -1,43 +1,55 @@
-apply plugin: 'java'
+apply plugin: 'java-library'
 apply plugin: 'eclipse'
 
+version = '0.0.1.0'
+
+configurations {
+	extraLibs // configuration that holds jars to include in the jar
+}
+	
 repositories {
-  mavenCentral()
+	jcenter()
 }
 
+println "ICY_HOME=${System.env.ICY_HOME}"
 dependencies {
-//  compile 'org.jgrapht:jgrapht-core:0.9.1'
+	configurations.implementation.extendsFrom(configurations.extraLibs)
+	// 1 External libraries
+	
+	// 2. Icy libraries
+	// 2.1 Core
+	implementation files("${System.env.ICY_HOME}/icy.jar") // Icy core
+	// 2.2 Libraries
+	implementation files("${System.env.ICY_HOME}/lib/bioformats.jar") // Bioformats
+	// 2.3 Plugins
+	implementation files("${System.env.ICY_HOME}/plugins/adufour/ezplug/EzPlug.jar") // EzPlug
+	implementation files("${System.env.ICY_HOME}/plugins/adufour/blocks/Blocks.jar") // Blocks
+	implementation files("${System.env.ICY_HOME}/plugins/adufour/protocols/Protocols.jar") // Protocols
+	implementation files("${System.env.ICY_HOME}/plugins/adufour/thresholder/Thresholder.jar") // Thresholder
+	
+	// 3. Test libraries
+	testImplementation 'org.hamcrest:hamcrest-all:1.3'
+	testImplementation 'junit:junit:4.12'
 }
 
 eclipse {
-  project {
-    natures += ['icy.icy4eclipse.core.icynature']
-  }
-  classpath {
-    file {
-      withXml {
-          def node = it.asNode()
-          
-          // clean src
-          node.classpathentry.findAll{
-            it.@kind == 'src'
-          }.each{
-            node.remove(it)
-          }
-          
-          // clean var
-          node.classpathentry.findAll{
-            it.@kind == 'var'
-          }.each{
-            node.remove(it)
-          }
-          
-          // set src and var
-          node.appendNode('classpathentry', [kind: 'src', path: 'src'])
-          node.appendNode('classpathentry', [kind: 'var', path: 'ICY_HOME/icy.jar'])
-          node.appendNode('classpathentry', [kind: 'var', path: 'ICY_HOME/plugins/adufour/blocks/Blocks.jar'])
-          node.appendNode('classpathentry', [kind: 'var', path: 'ICY_HOME/plugins/adufour/ezplug/EzPlug.jar'])
-      }
-    }
-  }
+	classpath.downloadJavadoc = true
+	project {
+		natures += ['icy.icy4eclipse.core.icynature']
+	}
+}
+
+jar {
+	from configurations.extraLibs.collect { it.isDirectory() ? it : zipTree(it) }
+}
+
+task sourcesJar(type: Jar) {
+	classifier = 'sources'
+	from sourceSets.main.output
+	from sourceSets.main.java
+	from configurations.extraLibs.collect { it.isDirectory() ? it : zipTree(it) }
+}
+
+artifacts {
+	archives sourcesJar
 }
