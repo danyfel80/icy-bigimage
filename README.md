@@ -10,10 +10,6 @@ This project has been developed as a _Gradle_ project and can be opened with _Ec
 
 In danyfel.bigimage.io:
 
-- Interactive Big Image Loader
-
-  This plugin allows you to load interactively a large image by loading small versions of the large image. You can load detailed parts of the image by adding a rectangle ROI on the image loaded, this will load a more detailed image on that part of the image.
-
 - Load Big Image
 
   This plugin can load an entire image at a desired resolution level (0 full resolution, 1 half resolution, 2 quarter resolution, etc.). You can also load a region of the image by providing the full resolution coordinates of the region.
@@ -22,11 +18,9 @@ In danyfel.bigimage.io:
 
   This plugin is more a testing plugin, it allows you to save an image loaded on icy by tiles avoiding excessive memory usage.
 
-### Available protocols
+- Transfer Big Image
 
-- Dimension2D: creates a dimension object from two double values.
-- Point2D: creates a point object from two double values.
-- Rectangle2D: creates a rectangle object from a point and a dimension object.
+  This plugin is a plugin to transfer image data from one file to another passing by Icy. This is a template plugin for thresholders and tile processing plugins. 
 
 ## Installation
 
