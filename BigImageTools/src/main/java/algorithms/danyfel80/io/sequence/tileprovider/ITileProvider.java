@@ -1,4 +1,4 @@
-package algorithms.danyfel80.io.image;
+package algorithms.danyfel80.io.sequence.tileprovider;
 
 import java.awt.Point;
 import java.io.IOException;
@@ -12,7 +12,7 @@ import icy.image.IcyBufferedImage;
  * @author Daniel Felipe Gonzalez Obando
  *
  */
-public interface TileProvider extends AutoCloseable {
+public interface ITileProvider {
 
 	/**
 	 * @param tile

@@ -2,9 +2,14 @@ package plugins.danyfel80.bigimage.io;
 
 import java.awt.Rectangle;
 import java.io.File;
+import java.nio.file.Paths;
 
-import algorithms.danyfel80.io.image.big.BigImageImporter;
+import algorithms.danyfel80.io.sequence.large.LargeSequenceImporter;
+import icy.common.listener.DetailedProgressListener;
 import icy.sequence.Sequence;
+import icy.system.IcyHandledException;
+import plugins.adufour.blocks.lang.Block;
+import plugins.adufour.blocks.util.VarList;
 import plugins.adufour.ezplug.EzGroup;
 import plugins.adufour.ezplug.EzPlug;
 import plugins.adufour.ezplug.EzStoppable;
@@ -13,25 +18,29 @@ import plugins.adufour.ezplug.EzVarInteger;
 import plugins.adufour.ezplug.EzVarSequence;
 
 /**
- * This plugin loads a big image and shows the loaded sequence.
+ * This plugin loads a large 2D image and shows the loaded sequence.
  * 
  * @author Daniel Felipe Gonzalez Obando
  */
-public class LoadBigImage extends EzPlug implements EzStoppable {
+public class LoadBigImage extends EzPlug implements Block, EzStoppable {
 
+	// Image file path
 	private EzVarFile file;
 
-	// Down-sampling
+	// Resolution pyramid position
 	private EzVarInteger resolutionLevel;
 
-	// Tiling
-	private EzVarInteger tileX;
-	private EzVarInteger tileY;
-	private EzVarInteger tileW;
-	private EzVarInteger tileH;
+	// Sub-image retrieval settings
+	private EzVarInteger rectangleX;
+	private EzVarInteger rectangleY;
+	private EzVarInteger rectangleW;
+	private EzVarInteger rectangleH;
 
-	// Result
-	private EzVarSequence loadedSequence;
+	// Progress listener
+	private DetailedProgressListener progressEventHandler;
+
+	// Block output
+	private EzVarSequence resultSequenceVar;
 
 	@Override
 	protected void initialize() {
@@ -39,20 +48,44 @@ public class LoadBigImage extends EzPlug implements EzStoppable {
 		resolutionLevel = new EzVarInteger("Resolution level", 0, 100, 1);
 		resolutionLevel.setToolTipText("The resolution of the resulting image downsampled by powers of 2"
 				+ " (e.g. 1 will import the image with half its size)");
-		tileX = new EzVarInteger("Tile x");
-		tileY = new EzVarInteger("Tile y");
-		tileW = new EzVarInteger("Tile width");
-		tileH = new EzVarInteger("Tile height");
+		rectangleX = new EzVarInteger("X");
+		rectangleY = new EzVarInteger("Y");
+		rectangleW = new EzVarInteger("Width");
+		rectangleH = new EzVarInteger("Height");
 
 		addEzComponent(file);
 		EzGroup resolutionGroup = new EzGroup("Resolution options", resolutionLevel);
 		addEzComponent(resolutionGroup);
 		resolutionGroup.setFoldedState(false);
-		EzGroup tileGroup = new EzGroup("Tile options", tileX, tileY, tileW, tileH);
+		EzGroup tileGroup = new EzGroup("Load rectangle", rectangleX, rectangleY, rectangleW, rectangleH);
 		addEzComponent(tileGroup);
 		tileGroup.setFoldedState(false);
 
-		loadedSequence = new EzVarSequence("Sequence");
+	}
+
+	@Override
+	public void declareInput(VarList inputMap) {
+		file = new EzVarFile("Image path", "");
+		resolutionLevel = new EzVarInteger("Resolution level", 0, 100, 1);
+		resolutionLevel.setToolTipText("The resolution of the resulting image downsampled by powers of 2"
+				+ " (e.g. 1 will import the image with half its size)");
+		rectangleX = new EzVarInteger("X");
+		rectangleY = new EzVarInteger("Y");
+		rectangleW = new EzVarInteger("Width");
+		rectangleH = new EzVarInteger("Height");
+
+		inputMap.add(file.name, file.getVariable());
+		inputMap.add(resolutionLevel.name, resolutionLevel.getVariable());
+		inputMap.add(rectangleX.name, rectangleX.getVariable());
+		inputMap.add(rectangleY.name, rectangleY.getVariable());
+		inputMap.add(rectangleW.name, rectangleW.getVariable());
+		inputMap.add(rectangleH.name, rectangleH.getVariable());
+	}
+
+	@Override
+	public void declareOutput(VarList outputMap) {
+		resultSequenceVar = new EzVarSequence("loaded sequence");
+		outputMap.add(resultSequenceVar.name, resultSequenceVar.getVariable());
 	}
 
 	@Override
@@ -60,32 +93,48 @@ public class LoadBigImage extends EzPlug implements EzStoppable {
 		// Read input
 		File filePath = file.getValue(true);
 		int resolution = resolutionLevel.getValue(true);
-		int x = tileX.getValue(true);
-		int y = tileY.getValue(true);
-		int w = tileW.getValue(true);
-		int h = tileH.getValue(true);
+		int x = rectangleX.getValue(true);
+		int y = rectangleY.getValue(true);
+		int w = rectangleW.getValue(true);
+		int h = rectangleH.getValue(true);
 
 		// Process
 		long startTime = System.currentTimeMillis();
-		BigImageImporter importer = new BigImageImporter(filePath, resolution, new Rectangle(x, y, w, h));
-		importer.setProgressListener((double progress, String message, Object data) -> {
-			getUI().setProgressBarValue(progress);
-			getUI().setProgressBarMessage(message);
-			return false;
-		});
+		LargeSequenceImporter importer = new LargeSequenceImporter();
+		importer.setFilePath(Paths.get(filePath.toString()));
+		importer.setTargetResolution(resolution);
+		importer.setTargetRectangle(new Rectangle(x, y, w, h));
+		importer.addProgressListener(getProgressEventHandler());
 		Sequence result;
 		try {
 			result = importer.call();
 		} catch (Exception e) {
-			throw new RuntimeException(e);
+			e.printStackTrace();
+			throw new IcyHandledException(e);
 		}
+		importer.removeProgressListener(getProgressEventHandler());
 		long endTime = System.currentTimeMillis();
 		long executionTime = endTime - startTime;
 
 		// Set result
-		loadedSequence.setValue(result);
-		addSequence(result);
+		if (isHeadLess()) {
+			resultSequenceVar.setValue(result);
+		} else {
+			addSequence(result);
+		}
 		System.out.println(String.format("%s loaded in %d milliseconds.", filePath.toString(), executionTime));
+	}
+
+	private DetailedProgressListener getProgressEventHandler() {
+		if (progressEventHandler == null) {
+			progressEventHandler = (double progress, String message, Object data) -> {
+				getUI().setProgressBarValue(progress);
+				getUI().setProgressBarMessage(message);
+				return false;
+			};
+		}
+
+		return progressEventHandler;
 	}
 
 	@Override

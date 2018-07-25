@@ -1,7 +1,7 @@
 /**
  * 
  */
-package algorithms.danyfel80.io.image.big;
+package algorithms.danyfel80.io.sequence.large;
 
 import java.awt.Dimension;
 import java.io.File;
@@ -20,7 +20,7 @@ import plugins.kernel.importer.LociImporterPlugin;
  * 
  * @author Daniel Felipe Gonzalez Obando
  */
-public class BigImageUtil {
+public class LargeSequenceHelper {
 
 	/**
 	 * Retrieves the 2D dimension of the image of the given file path.

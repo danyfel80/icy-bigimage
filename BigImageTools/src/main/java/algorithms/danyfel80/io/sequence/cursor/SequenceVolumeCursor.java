@@ -16,7 +16,7 @@
  * You should have received a copy of the GNU General Public License
  * along with Icy. If not, see <http://www.gnu.org/licenses/>.
  */
-package algorithms.danyfel80.io.image.cursor;
+package algorithms.danyfel80.io.sequence.cursor;
 
 import java.util.concurrent.atomic.AtomicBoolean;
 

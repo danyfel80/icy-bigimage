@@ -1,16 +1,17 @@
 package plugins.danyfel80.bigimage.io;
 
-import java.io.File;
-import java.nio.file.Paths;
+import java.nio.file.FileSystems;
+import java.nio.file.Path;
+import java.nio.file.PathMatcher;
 
-import algorithms.danyfel80.io.image.big.BigImageExporter;
-import algorithms.danyfel80.io.image.tileprovider.IcyBufferedImageTileProvider;
-import icy.file.FileUtil;
-import icy.image.IcyBufferedImage;
+import algorithms.danyfel80.io.sequence.large.LargeSequenceExporter;
+import algorithms.danyfel80.io.sequence.large.LargeSequenceExporterException;
+import algorithms.danyfel80.io.sequence.tileprovider.IcyBufferedImageTileProvider;
+import icy.common.listener.DetailedProgressListener;
+import icy.sequence.MetaDataUtil;
 import icy.sequence.Sequence;
-import loci.common.services.DependencyException;
-import loci.common.services.ServiceException;
-import ome.xml.meta.IMetadata;
+import icy.system.IcyHandledException;
+import loci.formats.ome.OMEXMLMetadata;
 import plugins.adufour.ezplug.EzPlug;
 import plugins.adufour.ezplug.EzStoppable;
 import plugins.adufour.ezplug.EzVarFile;
@@ -23,46 +24,77 @@ import plugins.adufour.ezplug.EzVarSequence;
  */
 public class SaveBigImage extends EzPlug implements EzStoppable {
 
-	private EzVarSequence inSeq;
-	private EzVarFile inFile;
+	private EzVarSequence sequenceVar;
+	private EzVarFile fileVar;
+
+	private Sequence sequence;
+	private Path filePath;
+
+	private OMEXMLMetadata metadata;
+	private DetailedProgressListener progressListener;
 
 	@Override
 	protected void initialize() {
-		inSeq = new EzVarSequence("Sequence");
-		inFile = new EzVarFile("File", "", ".ome.tif");
-		addEzComponent(inSeq);
-		addEzComponent(inFile);
+		sequenceVar = new EzVarSequence("Sequence");
+		fileVar = new EzVarFile("File", "", ".ome.tif");
+		addEzComponent(sequenceVar);
+		addEzComponent(fileVar);
 	}
 
 	@Override
 	protected void execute() {
-		Sequence seq = inSeq.getValue();
-		File file = inFile.getValue();
-		file = Paths.get(FileUtil.setExtension(file.getAbsolutePath(), ".ome.tif")).toFile();
+		getParameters();
+		exportSequence();
+	}
 
-		IcyBufferedImage image = seq.getFirstImage();
-		IMetadata metadata;
-		try {
-			metadata = BigImageExporter.createMetadata(image.getSizeX(), image.getSizeY(), image.getSizeC(),
-					image.getDataType_());
-		} catch (DependencyException | ServiceException e) {
-			throw new RuntimeException(e);
+	private void getParameters() {
+		sequence = sequenceVar.getValue(true);
+		filePath = fileVar.getValue(true).toPath();
+		PathMatcher extensionMatcher = FileSystems.getDefault().getPathMatcher("glob:*.ome.tiff");
+		if (!extensionMatcher.matches(filePath.getFileName())) {
+			filePath = filePath.resolveSibling(filePath.getFileName() + ".ome.tiff");
 		}
-		metadata.setImageName(seq.getName(), 0);
-		metadata.setPixelsPhysicalSizeX(seq.getOMEXMLMetadata().getPixelsPhysicalSizeX(0), 0);
-		metadata.setPixelsPhysicalSizeY(seq.getOMEXMLMetadata().getPixelsPhysicalSizeY(0), 0);
-		metadata.setPixelsPhysicalSizeZ(seq.getOMEXMLMetadata().getPixelsPhysicalSizeZ(0), 0);
+	}
 
-		try (BigImageExporter exporter = new BigImageExporter(file, metadata)) {
-			exporter.setProgressListener((double progress, String message, Object data) -> {
+	private void exportSequence() {
+		try (LargeSequenceExporter exporter = new LargeSequenceExporter()) {
+			createMetadata();
+			exporter.setOutputImageMetadata(metadata);
+			exporter.setOutputFilePath(filePath);
+			exporter.setTileProvider(new IcyBufferedImageTileProvider(sequence.getFirstImage()));
+			exporter.addProgressListener(getProgressListener());
+
+			exporter.write();
+		} catch (Exception e) {
+			e.printStackTrace();
+			throw new IcyHandledException(e);
+		} finally {
+		}
+	}
+
+	private void createMetadata() throws LargeSequenceExporterException {
+		metadata = LargeSequenceExporter.createMetadata(sequence.getSizeX(), sequence.getSizeY(), sequence.getSizeC(),
+				sequence.getDataType_());
+
+		MetaDataUtil.setName(metadata, 0, sequence.getName());
+		MetaDataUtil.setPixelSizeX(metadata, 0, sequence.getPixelSizeX());
+		MetaDataUtil.setPixelSizeY(metadata, 0, sequence.getPixelSizeY());
+
+		for (int channel = 0; channel < sequence.getSizeC(); channel++) {
+			MetaDataUtil.setPositionX(metadata, 0, 0, 0, channel, sequence.getPositionX());
+			MetaDataUtil.setPositionY(metadata, 0, 0, 0, channel, sequence.getPositionY());
+		}
+	}
+
+	private DetailedProgressListener getProgressListener() {
+		if (progressListener == null) {
+			progressListener = (double progress, String message, Object data) -> {
 				this.getUI().setProgressBarMessage(message);
 				this.getUI().setProgressBarValue(progress);
 				return false;
-			});
-			exporter.write(new IcyBufferedImageTileProvider(image));
-		} catch (Exception e) {
-			throw new RuntimeException(e);
+			};
 		}
+		return progressListener;
 	}
 
 	@Override
