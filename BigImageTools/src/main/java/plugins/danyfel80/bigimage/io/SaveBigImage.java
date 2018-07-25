@@ -12,6 +12,8 @@ import icy.sequence.MetaDataUtil;
 import icy.sequence.Sequence;
 import icy.system.IcyHandledException;
 import loci.formats.ome.OMEXMLMetadata;
+import plugins.adufour.blocks.lang.Block;
+import plugins.adufour.blocks.util.VarList;
 import plugins.adufour.ezplug.EzPlug;
 import plugins.adufour.ezplug.EzStoppable;
 import plugins.adufour.ezplug.EzVarFile;
@@ -22,7 +24,7 @@ import plugins.adufour.ezplug.EzVarSequence;
  * 
  * @author Daniel Felipe Gonzalez Obando
  */
-public class SaveBigImage extends EzPlug implements EzStoppable {
+public class SaveBigImage extends EzPlug implements EzStoppable, Block {
 
 	private EzVarSequence sequenceVar;
 	private EzVarFile fileVar;
@@ -36,9 +38,21 @@ public class SaveBigImage extends EzPlug implements EzStoppable {
 	@Override
 	protected void initialize() {
 		sequenceVar = new EzVarSequence("Sequence");
-		fileVar = new EzVarFile("File", "", ".ome.tif");
+		fileVar = new EzVarFile("File", null);
 		addEzComponent(sequenceVar);
 		addEzComponent(fileVar);
+	}
+
+	@Override
+	public void declareInput(VarList inputMap) {
+		sequenceVar = new EzVarSequence("Sequence");
+		fileVar = new EzVarFile("File", null);
+		inputMap.add(sequenceVar.name, sequenceVar.getVariable());
+		inputMap.add(fileVar.name, fileVar.getVariable());
+	}
+
+	@Override
+	public void declareOutput(VarList outputMap) {
 	}
 
 	@Override
@@ -62,7 +76,8 @@ public class SaveBigImage extends EzPlug implements EzStoppable {
 			exporter.setOutputImageMetadata(metadata);
 			exporter.setOutputFilePath(filePath);
 			exporter.setTileProvider(new IcyBufferedImageTileProvider(sequence.getFirstImage()));
-			exporter.addProgressListener(getProgressListener());
+			if (!isHeadLess())
+				exporter.addProgressListener(getProgressListener());
 
 			exporter.write();
 		} catch (Exception e) {

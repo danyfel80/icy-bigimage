@@ -348,6 +348,7 @@ public class LargeSequenceImporter implements Callable<Sequence> {
 
 	private Callable<Void> getTileImportationCallable(int x, int y) {
 		return () -> {
+			Thread.yield();
 			Rectangle currentTileRectangle = getTileRectangle(x, y);
 
 			// System.out.println(currentTileRectangle);
@@ -358,6 +359,7 @@ public class LargeSequenceImporter implements Callable<Sequence> {
 			} finally {
 				releaseSubImporter(subImporter);
 			}
+			Thread.yield();
 			Graphics2D g = resultImage.createGraphics();
 			Point tilePosition = getTilePositionInResultImage(x, y);
 			g.drawImage(tileImage, tilePosition.x, tilePosition.y, resultTileSize.width, resultTileSize.height, null);
