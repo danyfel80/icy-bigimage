@@ -1,7 +1,7 @@
 apply plugin: 'java-library'
 apply plugin: 'eclipse'
 
-version = '0.1.1'
+version = '0.1.2'
 
 configurations {
 	extraLibs // configuration that holds jars to include in the jar
@@ -35,7 +35,10 @@ dependencies {
 eclipse {
 	classpath.downloadJavadoc = true
 	project {
+		buildCommand 'org.eclipse.buildship.core.gradleprojectbuilder'
+		
 		natures += ['icy.icy4eclipse.core.icynature']
+		natures += ['org.eclipse.buildship.core.gradleprojectnature']
 	}
 }
 
