@@ -143,8 +143,7 @@ public class LargeSequenceImporter implements Callable<Sequence> {
 	 */
 	private void checkFile() throws LargeSequenceImporterException {
 		if (!Files.exists(getFilePath())) {
-			throw new LargeSequenceImporterException(
-					String.format("The file path does not exist: %s", getFilePath()));
+			throw new LargeSequenceImporterException(String.format("The file path does not exist: %s", getFilePath()));
 		}
 	}
 
@@ -289,7 +288,7 @@ public class LargeSequenceImporter implements Callable<Sequence> {
 					completionService.submit(getTileImportationCallable(x, y));
 				}
 			}
-			
+
 			threadPool.shutdown();
 
 			int tileNumber = 0;
@@ -352,6 +351,12 @@ public class LargeSequenceImporter implements Callable<Sequence> {
 		return () -> {
 			Thread.yield();
 			Rectangle currentTileRectangle = getTileRectangle(x, y);
+			Dimension currentResultTileSize = new Dimension(resultTileSize);
+
+			if (currentTileRectangle.width < targetTileSize.width)
+				currentResultTileSize.width = (int) Math.ceil(currentTileRectangle.width * scaleFactor);
+			if (currentTileRectangle.height < targetTileSize.height)
+				currentResultTileSize.height = (int) Math.ceil(currentTileRectangle.height * scaleFactor);
 
 			// System.out.println(currentTileRectangle);
 			LociImporterPlugin subImporter = getSubImporter();
@@ -364,7 +369,8 @@ public class LargeSequenceImporter implements Callable<Sequence> {
 			Thread.yield();
 			Graphics2D g = resultImage.createGraphics();
 			Point tilePosition = getTilePositionInResultImage(x, y);
-			g.drawImage(tileImage, tilePosition.x, tilePosition.y, resultTileSize.width, resultTileSize.height, null);
+			g.drawImage(tileImage, tilePosition.x, tilePosition.y, currentResultTileSize.width, currentResultTileSize.height,
+					null);
 			g.dispose();
 			return null;
 		};
@@ -438,8 +444,7 @@ public class LargeSequenceImporter implements Callable<Sequence> {
 		try {
 			importer.close();
 		} catch (IOException e) {
-			throw new LargeSequenceImporterException(
-					String.format("Could not close Loci importer for %s", getFilePath()), e);
+			throw new LargeSequenceImporterException(String.format("Could not close Loci importer for %s", getFilePath()), e);
 		}
 	}
 
