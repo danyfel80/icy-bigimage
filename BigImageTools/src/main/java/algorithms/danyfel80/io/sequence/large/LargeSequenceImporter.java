@@ -289,6 +289,8 @@ public class LargeSequenceImporter implements Callable<Sequence> {
 					completionService.submit(getTileImportationCallable(x, y));
 				}
 			}
+			
+			threadPool.shutdown();
 
 			int tileNumber = 0;
 			for (int y = 0; y < tileGridRectangle.height; y++) {
