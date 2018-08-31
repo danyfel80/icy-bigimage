@@ -31,7 +31,10 @@ public class LargeSequenceTileProvider implements ITileProvider {
 	}
 
 	public void setTileSize(Dimension tileSize) {
-		this.tileSize.setSize(tileSize);
+		if (this.tileSize != null)
+			this.tileSize.setSize(tileSize);
+		else
+			this.tileSize = new Dimension(tileSize);
 	}
 
 	protected boolean isProviderPrepared() {
