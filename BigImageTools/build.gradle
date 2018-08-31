@@ -53,6 +53,12 @@ task sourcesJar(type: Jar) {
 	from configurations.extraLibs.collect { it.isDirectory() ? it : zipTree(it) }
 }
 
+task javadocJar(type: Jar, dependsOn: javadoc) {
+    classifier = 'javadoc'
+    from javadoc.destinationDir
+}
+
 artifacts {
 	archives sourcesJar
+	archives javadocJar
 }
