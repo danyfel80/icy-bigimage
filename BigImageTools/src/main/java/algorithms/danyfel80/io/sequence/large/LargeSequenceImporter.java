@@ -29,6 +29,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.Callable;
@@ -39,16 +40,24 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 
+import org.w3c.dom.Document;
+import org.w3c.dom.Element;
+
 import icy.common.exception.UnsupportedFormatException;
 import icy.common.listener.DetailedProgressListener;
+import icy.file.FileUtil;
 import icy.image.IcyBufferedImage;
+import icy.roi.ROI;
+import icy.roi.ROIUtil;
 import icy.sequence.MetaDataUtil;
 import icy.sequence.Sequence;
 import icy.type.DataType;
 import icy.type.dimension.Dimension2D;
 import icy.util.OMEUtil;
+import icy.util.XMLUtil;
 import ome.xml.meta.OMEXMLMetadata;
 import plugins.kernel.importer.LociImporterPlugin;
+import plugins.kernel.roi.roi2d.ROI2DShape;
 
 /**
  * @author Daniel Felipe Gonzalez Obando
@@ -58,7 +67,7 @@ public class LargeSequenceImporter implements Callable<Sequence> {
 
 	private Path filePath;
 	private double targetResolution;
-	private Rectangle2D targetRectangle;
+	private Rectangle2D targetPixelRectangle;
 	private Set<DetailedProgressListener> progressListeners;
 
 	private LociImporterPlugin importer;
@@ -105,11 +114,11 @@ public class LargeSequenceImporter implements Callable<Sequence> {
 	}
 
 	public Rectangle2D getTargetRectangle() {
-		return targetRectangle;
+		return targetPixelRectangle;
 	}
 
-	public void setTargetRectangle(Rectangle2D targetRectangle) {
-		this.targetRectangle = targetRectangle;
+	public void setTargetPixelRectangle(Rectangle2D targetRectangle) {
+		this.targetPixelRectangle = targetRectangle;
 	}
 
 	public void addProgressListener(DetailedProgressListener progressListener) {
@@ -208,9 +217,9 @@ public class LargeSequenceImporter implements Callable<Sequence> {
 		int imageHeight = fileMetadata.getPixelsSizeY(0).getValue();
 		targetImageSize = new Dimension(imageWidth, imageHeight);
 		if (getTargetRectangle() == null || getTargetRectangle().isEmpty()) {
-			setTargetRectangle(new Rectangle(targetImageSize));
+			setTargetPixelRectangle(new Rectangle(targetImageSize));
 		} else {
-			setTargetRectangle(getTargetRectangle().createIntersection(new Rectangle(targetImageSize)));
+			setTargetPixelRectangle(getTargetRectangle().createIntersection(new Rectangle(targetImageSize)));
 		}
 	}
 
@@ -242,8 +251,8 @@ public class LargeSequenceImporter implements Callable<Sequence> {
 
 	private void computeTargetRectanglePosition() {
 		targetRectanglePosition = new Point2D.Double(
-				targetPosition.getX() + targetRectangle.getX() * targetPixelSize.getWidth(),
-				targetPosition.getY() + targetRectangle.getY() * targetPixelSize.getHeight());
+				targetPosition.getX() + targetPixelRectangle.getX() * targetPixelSize.getWidth(),
+				targetPosition.getY() + targetPixelRectangle.getY() * targetPixelSize.getHeight());
 	}
 
 	private void retrieveScaleFactor() {
@@ -303,8 +312,9 @@ public class LargeSequenceImporter implements Callable<Sequence> {
 			resultSequence.setName(targetImageName);
 			resultSequence.setPositionX(targetRectanglePosition.getX());
 			resultSequence.setPositionY(targetRectanglePosition.getY());
-			resultSequence.setPixelSizeX(targetPixelSize.getWidth());
-			resultSequence.setPixelSizeY(targetPixelSize.getHeight());
+			resultSequence.setPixelSizeX(targetPixelSize.getWidth() / scaleFactor);
+			resultSequence.setPixelSizeY(targetPixelSize.getHeight() / scaleFactor);
+			addROIsToResultSequence();
 		} catch (ExecutionException e) {
 			throw new LargeSequenceImporterException("Exception while importing image: " + e);
 		} finally {
@@ -398,8 +408,8 @@ public class LargeSequenceImporter implements Callable<Sequence> {
 
 	private Point getTilePositionInResultImage(int x, int y) {
 		Point tilePositionInTargetImage = getTilePositionInTargetImage(x, y);
-		int tileX = (int) ((tilePositionInTargetImage.x - targetRectangle.getX()) * scaleFactor);
-		int tileY = (int) ((tilePositionInTargetImage.y - targetRectangle.getY()) * scaleFactor);
+		int tileX = (int) ((tilePositionInTargetImage.x - targetPixelRectangle.getX()) * scaleFactor);
+		int tileY = (int) ((tilePositionInTargetImage.y - targetPixelRectangle.getY()) * scaleFactor);
 		return new Point(tileX, tileY);
 	}
 
@@ -413,12 +423,21 @@ public class LargeSequenceImporter implements Callable<Sequence> {
 	}
 
 	private void closeSubImporters() throws LargeSequenceImporterException {
-		for (int i = 0; i < numImporters; i++) {
+		if (subImporterArray != null) {
 			try {
-				subImporterArray[i].close();
-				subImporterArray[i] = null;
-			} catch (Exception e) {
-				throw new LargeSequenceImporterException("Could not close all subimporters.", e);
+				for (int i = 0; i < numImporters; i++) {
+					if (subImporterArray[i] != null) {
+						try {
+							subImporterArray[i].close();
+							subImporterArray[i] = null;
+						} catch (Exception e) {
+							throw new LargeSequenceImporterException("Could not close all subimporters.", e);
+						}
+					}
+				}
+			} finally {
+				subImporterArray = null;
+				numImporters = 0;
 			}
 		}
 	}
@@ -427,6 +446,28 @@ public class LargeSequenceImporter implements Callable<Sequence> {
 		int totalTileNumber = tileGridRectangle.width * tileGridRectangle.height;
 		progressListeners.forEach(l -> l.notifyProgress(tileNumber / (double) totalTileNumber,
 				String.format("Loading tiles (%d/%d)", tileNumber, totalTileNumber), null));
+	}
+
+	private void addROIsToResultSequence() {
+		String fileName = FileUtil.getFileName(getFilePath().toString(), false);
+		Path xmlFile = getFilePath().resolveSibling(fileName + ".xml");
+		if (Files.exists(xmlFile)) {
+			Document xml = XMLUtil.loadDocument(xmlFile.toFile());
+			Element rootElement = XMLUtil.getRootElement(xml);
+			Element roisElement = XMLUtil.getElement(rootElement, "rois");
+			List<? extends ROI> rois = ROI.loadROIsFromXML(roisElement);
+
+			Sequence placeholderSequence = new Sequence();
+			placeholderSequence.setPixelSizeX(targetPixelSize.getWidth());
+			placeholderSequence.setPixelSizeY(targetPixelSize.getHeight());
+			placeholderSequence.setPositionX(targetPosition.getX());
+			placeholderSequence.setPositionY(targetPosition.getY());
+
+			rois.stream().filter(roi -> roi instanceof ROI2DShape).map(roi -> (ROI2DShape) roi)
+					.filter(shapeRoi -> shapeRoi.intersects(targetPixelRectangle))
+					.map(shapeRoi -> ROIUtil.adjustToSequence(shapeRoi, placeholderSequence, getResultSequence()))
+					.forEach(scaledRoi -> getResultSequence().addROI(scaledRoi));
+		}
 	}
 
 	private void releaseThreadPool() throws InterruptedException {

@@ -1,7 +1,7 @@
 apply plugin: 'java-library'
 apply plugin: 'eclipse'
 
-version = '0.1.5'
+version = '0.1.6'
 
 configurations {
 	extraLibs // configuration that holds jars to include in the jar
@@ -53,6 +53,12 @@ task sourcesJar(type: Jar) {
 	from configurations.extraLibs.collect { it.isDirectory() ? it : zipTree(it) }
 }
 
+task javadocJar(type: Jar, dependsOn: javadoc) {
+    classifier = 'javadoc'
+    from javadoc.destinationDir
+}
+
 artifacts {
 	archives sourcesJar
+	archives javadocJar
 }
