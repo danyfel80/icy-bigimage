@@ -103,7 +103,7 @@ public class LoadBigImage extends EzPlug implements Block, EzStoppable {
 		LargeSequenceImporter importer = new LargeSequenceImporter();
 		importer.setFilePath(Paths.get(filePath.toString()));
 		importer.setTargetResolution(resolution);
-		importer.setTargetRectangle(new Rectangle(x, y, w, h));
+		importer.setTargetPixelRectangle(new Rectangle(x, y, w, h));
 		if (!isHeadLess()) {
 			importer.addProgressListener(getProgressEventHandler());
 		}
