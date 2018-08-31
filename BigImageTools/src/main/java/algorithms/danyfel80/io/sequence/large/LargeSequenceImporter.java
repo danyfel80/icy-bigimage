@@ -19,7 +19,6 @@
 package algorithms.danyfel80.io.sequence.large;
 
 import java.awt.Dimension;
-import java.awt.Graphics2D;
 import java.awt.Point;
 import java.awt.Rectangle;
 import java.awt.geom.Point2D;
@@ -47,6 +46,7 @@ import icy.common.exception.UnsupportedFormatException;
 import icy.common.listener.DetailedProgressListener;
 import icy.file.FileUtil;
 import icy.image.IcyBufferedImage;
+import icy.image.IcyBufferedImageUtil;
 import icy.roi.ROI;
 import icy.roi.ROIUtil;
 import icy.sequence.MetaDataUtil;
@@ -377,11 +377,10 @@ public class LargeSequenceImporter implements Callable<Sequence> {
 				releaseSubImporter(subImporter);
 			}
 			Thread.yield();
-			Graphics2D g = resultImage.createGraphics();
+			IcyBufferedImage scaledImage = IcyBufferedImageUtil.scale(tileImage, currentResultTileSize.width,
+					currentResultTileSize.height);
 			Point tilePosition = getTilePositionInResultImage(x, y);
-			g.drawImage(tileImage, tilePosition.x, tilePosition.y, currentResultTileSize.width, currentResultTileSize.height,
-					null);
-			g.dispose();
+			resultImage.copyData(scaledImage, null, tilePosition);
 			return null;
 		};
 	}
