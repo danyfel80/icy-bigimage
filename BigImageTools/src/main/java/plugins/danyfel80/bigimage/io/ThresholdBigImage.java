@@ -18,6 +18,7 @@ import plugins.adufour.blocks.lang.Block;
 import plugins.adufour.blocks.util.VarList;
 import plugins.adufour.ezplug.EzPlug;
 import plugins.adufour.ezplug.EzStoppable;
+import plugins.adufour.ezplug.EzVarBoolean;
 import plugins.adufour.ezplug.EzVarDoubleArrayNative;
 import plugins.adufour.ezplug.EzVarFile;
 import plugins.kernel.importer.LociImporterPlugin;
@@ -26,10 +27,12 @@ public class ThresholdBigImage extends EzPlug implements EzStoppable, Block {
 
 	EzVarFile inputFileVar;
 	EzVarDoubleArrayNative thresholdValuesVar;
+	EzVarBoolean outputInvertedVar;
 	EzVarFile outputFileVar;
 
 	private Path inputFilePath;
 	private double[] thresholdValues;
+	private boolean outputInverted;
 	private Path outputFilePath;
 	private LargeSequenceThresholdedTileProvider tileProvider;
 	private LociImporterPlugin importer;
@@ -39,30 +42,33 @@ public class ThresholdBigImage extends EzPlug implements EzStoppable, Block {
 	@Override
 	protected void initialize() {
 		inputFileVar = new EzVarFile("Input image file", null);
-		thresholdValuesVar = new EzVarDoubleArrayNative("Threshold values", new double[][] { new double[] { 100d, 200d } },
+		thresholdValuesVar = new EzVarDoubleArrayNative("Threshold values", new double[][] {new double[] {100d, 200d}},
 				true);
+		outputInvertedVar = new EzVarBoolean("Invert output", false);
 		outputFileVar = new EzVarFile("Output image file", null);
 
 		addEzComponent(inputFileVar);
 		addEzComponent(thresholdValuesVar);
+		addEzComponent(outputInvertedVar);
 		addEzComponent(outputFileVar);
 	}
 
 	@Override
 	public void declareInput(VarList inputMap) {
 		inputFileVar = new EzVarFile("Input image file", null);
-		thresholdValuesVar = new EzVarDoubleArrayNative("Threshold values", new double[][] { new double[] { 100d, 200d } },
+		thresholdValuesVar = new EzVarDoubleArrayNative("Threshold values", new double[][] {new double[] {100d, 200d}},
 				true);
+		outputInvertedVar = new EzVarBoolean("Invert output", false);
 		outputFileVar = new EzVarFile("Output image file", null);
 
 		inputMap.add(inputFileVar.name, inputFileVar.getVariable());
 		inputMap.add(thresholdValuesVar.name, thresholdValuesVar.getVariable());
+		inputMap.add(outputInvertedVar.name, outputInvertedVar.getVariable());
 		inputMap.add(outputFileVar.name, outputFileVar.getVariable());
 	}
 
 	@Override
-	public void declareOutput(VarList outputMap) {
-	}
+	public void declareOutput(VarList outputMap) {}
 
 	@Override
 	protected void execute() {
@@ -91,6 +97,7 @@ public class ThresholdBigImage extends EzPlug implements EzStoppable, Block {
 	private void retrieveParameters() {
 		inputFilePath = inputFileVar.getValue(true).toPath();
 		thresholdValues = thresholdValuesVar.getValue(true);
+		outputInverted = outputInvertedVar.getValue(true);
 		outputFilePath = outputFileVar.getValue(true).toPath();
 		PathMatcher extensionMatcher = FileSystems.getDefault().getPathMatcher("glob:*.ome.tiff");
 		if (!extensionMatcher.matches(outputFilePath.getFileName())) {
@@ -103,6 +110,7 @@ public class ThresholdBigImage extends EzPlug implements EzStoppable, Block {
 		getInputImageImporter();
 		tileProvider.setImporter(importer);
 		tileProvider.setThresholdValues(thresholdValues);
+		tileProvider.setInvertingClasses(outputInverted);
 	}
 
 	private void getInputImageImporter() {
@@ -164,7 +172,6 @@ public class ThresholdBigImage extends EzPlug implements EzStoppable, Block {
 	}
 
 	@Override
-	public void clean() {
-	}
+	public void clean() {}
 
 }

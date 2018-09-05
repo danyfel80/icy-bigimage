@@ -21,6 +21,7 @@ package algorithms.danyfel80.io.sequence.large;
 import java.awt.Dimension;
 import java.awt.Point;
 import java.io.IOException;
+import java.nio.channels.ClosedByInterruptException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.HashSet;
@@ -357,8 +358,12 @@ public class LargeSequenceExporter implements AutoCloseable {
 		getCurrentTileImage();
 		getCurrentTileData();
 
-		imageWriter.saveBytes(currentChannel, currentTileData, ifd, currentTileX, currentTileY, currentTileWidth,
+		try {
+			imageWriter.saveBytes(currentChannel, currentTileData, ifd, currentTileX, currentTileY, currentTileWidth,
 				currentTileHeight);
+		}catch (ClosedByInterruptException e) {
+			throw new InterruptedException();
+		}
 	}
 
 	private int getCurrentTileWidth() {
