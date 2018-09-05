@@ -36,6 +36,7 @@ import icy.type.DataType;
 public class LargeSequenceThresholdedTileProvider extends LargeSequenceTileProvider {
 
 	private List<Double> thresholdValues;
+	private boolean invertingClasses;
 	private IcyBufferedImage currentTileImage;
 	private IcyBufferedImageCursor cursorCurrentTileImage;
 	private int currentX, currentY;
@@ -43,6 +44,10 @@ public class LargeSequenceThresholdedTileProvider extends LargeSequenceTileProvi
 
 	public void setThresholdValues(double[] thresholdValues) {
 		this.thresholdValues = Arrays.stream(thresholdValues).sorted().boxed().collect(Collectors.toList());
+	}
+
+	public void setInvertingClasses(boolean invertingClasses) {
+		this.invertingClasses = invertingClasses;
 	}
 
 	@Override
@@ -78,6 +83,10 @@ public class LargeSequenceThresholdedTileProvider extends LargeSequenceTileProvi
 		int index = Collections.binarySearch(thresholdValues, currentAverageValue);
 		if (index < 0)
 			index = Math.abs(index) - 1;
+
+		if (invertingClasses)
+			index = thresholdValues.size() - index;
+
 		return index;
 	}
 }
