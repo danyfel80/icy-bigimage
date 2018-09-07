@@ -288,6 +288,8 @@ public class LargeSequenceImporter implements Callable<Sequence> {
 
 	private void computeImage() throws InterruptedException, LargeSequenceImporterException {
 		createResultImage();
+		resultImage.setAutoUpdateChannelBounds(true);
+		resultImage.beginUpdate();
 		startSubImporters();
 		startThreadPool();
 		CompletionService<Void> completionService = new ExecutorCompletionService<>(threadPool);
@@ -307,7 +309,7 @@ public class LargeSequenceImporter implements Callable<Sequence> {
 					notifyProgress(tileNumber++);
 				}
 			}
-
+			resultImage.endUpdate();
 			resultSequence = new Sequence(resultImage);
 			resultSequence.setName(targetImageName);
 			resultSequence.setPositionX(targetRectanglePosition.getX());
@@ -381,6 +383,7 @@ public class LargeSequenceImporter implements Callable<Sequence> {
 					currentResultTileSize.height);
 			Point tilePosition = getTilePositionInResultImage(x, y);
 			resultImage.copyData(scaledImage, null, tilePosition);
+			resultImage.dataChanged();
 			return null;
 		};
 	}
