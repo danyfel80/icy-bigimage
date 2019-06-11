@@ -197,11 +197,16 @@ public class LargeSequenceImporter implements Callable<Sequence> {
 		} catch (UnsupportedFormatException | IOException e) {
 			throw new LargeSequenceImporterException("Could not specify the tile size", e);
 		}
-
+		
 		if (targetTileSize.width <= 0)
 			targetTileSize.width = 256;
 		if (targetTileSize.height <= 0)
 			targetTileSize.height = 256;
+		
+		if (targetTileSize.width > 2048 || targetTileSize.height > 2048) {
+			targetTileSize.width = 256;
+			targetTileSize.height = 256;
+		}
 	}
 
 	private void retrieveFileMetadata() throws LargeSequenceImporterException {
@@ -236,8 +241,8 @@ public class LargeSequenceImporter implements Callable<Sequence> {
 	}
 
 	private void retrieveTargetPixelSize() {
-		targetPixelSize = new Dimension2D.Double(OMEUtil.getValue(fileMetadata.getPixelsPhysicalSizeX(0), 0),
-				OMEUtil.getValue(fileMetadata.getPixelsPhysicalSizeY(0), 0));
+		targetPixelSize = new Dimension2D.Double(OMEUtil.getValue(fileMetadata.getPixelsPhysicalSizeX(0), 1),
+				OMEUtil.getValue(fileMetadata.getPixelsPhysicalSizeY(0), 1));
 	}
 
 	private void retrieveTargetPosition() {
