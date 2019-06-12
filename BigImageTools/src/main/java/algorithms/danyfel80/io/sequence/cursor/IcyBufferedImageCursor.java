@@ -106,15 +106,15 @@ public class IcyBufferedImageCursor {
 		switch (planeType) {
 		case UBYTE:
 		case BYTE:
-			((byte[][]) volumeData)[c][x + y * planeSize[0]] = (byte) getSafeValue(val);
+			((byte[][]) volumeData)[c][x + y * planeSize[0]] = (byte) Math.round(getSafeValue(val));
 		break;
 		case USHORT:
 		case SHORT:
-			((short[][]) volumeData)[c][x + y * planeSize[0]] = (short) getSafeValue(val);
+			((short[][]) volumeData)[c][x + y * planeSize[0]] = (short) Math.round(getSafeValue(val));
 		break;
 		case UINT:
 		case INT:
-			((int[][]) volumeData)[c][x + y * planeSize[0]] = (int) getSafeValue(val);
+			((int[][]) volumeData)[c][x + y * planeSize[0]] = (int) Math.round(getSafeValue(val));
 		break;
 		case FLOAT:
 			((float[][]) volumeData)[c][x + y * planeSize[0]] = (float) getSafeValue(val);
