@@ -266,8 +266,8 @@ public class LargeSequenceExporter implements AutoCloseable {
 	}
 
 	private void notifyCurrentProgress() {
-		double progress = (tilesProcessed > 0) ? (tilesProcessed / (double) totalTiles) : Double.NaN;
-		String message = (tilesProcessed > 0) ? String.format("Writing tile %d of %d...", tilesProcessed, totalTiles)
+		double progress = (tilesProcessed > 0)? (tilesProcessed / (double) totalTiles): Double.NaN;
+		String message = (tilesProcessed > 0)? String.format("Writing tile %d of %d...", tilesProcessed, totalTiles)
 				: "Initializing file writing...";
 		progressListeners.forEach(l -> l.notifyProgress(progress, message, null));
 	}
@@ -346,23 +346,25 @@ public class LargeSequenceExporter implements AutoCloseable {
 	}
 
 	private void writeTile() throws InterruptedException, IOException, FormatException {
-		if (Thread.currentThread().isInterrupted())
-			throw new InterruptedException();
-
 		++tilesProcessed;
 		notifyCurrentProgress();
 
 		currentTileX = TILE_SIZE.width * currentTileColumn;
 		currentTileWidth = getCurrentTileWidth();
 
+		if (Thread.interrupted())
+			throw new InterruptedException("Interrupted when retrieving series " + currentSeries + ", channel " + currentChannel
+					+ ", current tile row " + currentTileY + ", current tile column " + currentTileX);
+
 		getCurrentTileImage();
 		getCurrentTileData();
 
 		try {
 			imageWriter.saveBytes(currentChannel, currentTileData, ifd, currentTileX, currentTileY, currentTileWidth,
-				currentTileHeight);
-		}catch (ClosedByInterruptException e) {
-			throw new InterruptedException();
+					currentTileHeight);
+		} catch (ClosedByInterruptException e) {
+			throw new InterruptedException("Interrupted when writing series " + currentSeries + ", channel " + currentChannel
+					+ ", current tile row " + currentTileY + ", current tile column " + currentTileX);
 		}
 	}
 
